@@ -18,6 +18,7 @@ con = sqlite3.connect(db_file)
 
 cur = con.cursor()
 cur.execute('PRAGMA journal_mode=wal')
+cur.close()
 
 def on_message(client, userdata, message):
     text = message.payload.decode('ascii')
@@ -86,10 +87,16 @@ def on_message(client, userdata, message):
 
                     query = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
 
-                    cur = con.cursor()
-
                     try:
+                        cur = con.cursor()
+
+                        cur.execute('BEGIN')
+
                         cur.execute(query, (channel.lower(), word.lower(), count, count))
+
+                        cur.execute('COMMIT')
+
+                        cur.close()
 
                     except sqlite3.OperationalError as oe:
                         # table does not exist probably
@@ -99,11 +106,12 @@ def on_message(client, userdata, message):
 
                             cur.execute(query)
 
+                            cur.close()
+
+                            con.commit()
+
                         except Exception as e:
                             print(f'Unexpected exception {e} while handling exception {oe}')
-
-                    con.commit()
-                    cur.close()
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
