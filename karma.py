@@ -16,6 +16,9 @@ db_file      = 'karma.db'
 
 con = sqlite3.connect(db_file)
 
+cur = con.cursor()
+cur.execute('PRAGMA journal_mode=wal')
+
 def on_message(client, userdata, message):
     text = message.payload.decode('ascii')
 
@@ -53,6 +56,8 @@ def on_message(client, userdata, message):
 
                 except Exception as e:
                     print(f'Exception: {e}')
+
+                cur.close()
 
         else:
             for word in text.split(' '):
