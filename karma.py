@@ -59,7 +59,7 @@ def on_message(client, userdata, message):
                 count = 0
 
                 add = 0
-                while word[-1] == '+':
+                while len(word) >= 1 and word[-1] == '+':
                     add += 1
 
                     word = word[:-1]
@@ -68,7 +68,7 @@ def on_message(client, userdata, message):
                     count += add - 1
 
                 sub = 0
-                while word[-1] == '-':
+                while len(word) >= 1 and word[-1] == '-':
                     sub += 1
 
                     word = word[:-1]
