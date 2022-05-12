@@ -13,7 +13,7 @@ topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'test']
 
 def on_message(client, userdata, message):
-    text = message.payload.decode('ascii')
+    text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
 

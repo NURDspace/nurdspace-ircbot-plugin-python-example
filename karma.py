@@ -21,7 +21,7 @@ cur.execute('PRAGMA journal_mode=wal')
 cur.close()
 
 def on_message(client, userdata, message):
-    text = message.payload.decode('ascii')
+    text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
 
