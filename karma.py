@@ -40,7 +40,7 @@ def on_message(client, userdata, message):
             word    = tokens[1]
 
             if command == 'karma':
-                query = 'SELECT count FROM karma WHERE channel=? and word=?'
+                query = 'SELECT count FROM karma WHERE channel=? AND word=?'
 
                 cur = con.cursor()
 
@@ -54,6 +54,34 @@ def on_message(client, userdata, message):
 
                     else:
                         client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'Karma of "{word}" is {row[0]}')
+
+                except Exception as e:
+                    print(f'Exception: {e}')
+
+                cur.close()
+
+            elif command == 'rkarma':
+                query = 'SELECT who, count FROM rkarma WHERE channel=? AND word=? ORDER BY nick'
+
+                cur = con.cursor()
+
+                try:
+                    cur.execute(query, (channel.lower(), word.lower()))
+
+                    output = ''
+
+                    for row in cur.fetchone():
+                        if output != '':
+                            output += ', '
+
+                        else:
+                            output += f'{row[0]}:{row[1]}'
+
+                    if output == ''
+                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'"{word}" has no karma (yet)')
+
+                    else:
+                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'Reverse karma of "{word}": {output}')
 
                 except Exception as e:
                     print(f'Exception: {e}')
@@ -85,14 +113,18 @@ def on_message(client, userdata, message):
                 if count != 0:
                     print(f'Adding {count} karma to {word}')
 
-                    query = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
+                    query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
+
+                    query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
 
                     try:
                         cur = con.cursor()
 
                         cur.execute('BEGIN')
 
-                        cur.execute(query, (channel.lower(), word.lower(), count, count))
+                        cur.execute(query1, (channel.lower(), word.lower(), count, count))
+
+                        cur.execute(query2, (channel.lower(), word.lower(), nick.lower(), count, count))
 
                         cur.execute('COMMIT')
 
@@ -103,6 +135,10 @@ def on_message(client, userdata, message):
 
                         try:
                             query = 'CREATE TABLE karma(channel TEXT NOT NULL, word TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word))'
+
+                            cur.execute(query)
+
+                            query = 'CREATE TABLE rkarma(channel TEXT NOT NULL, word TEXT NOT NULL, who TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word, who))'
 
                             cur.execute(query)
 
@@ -126,6 +162,8 @@ def announcer(client):
         time.sleep(3)
 
         client.publish(target_topic, 'cmd=karma|descr=Show karma of a word/entity.')
+
+        client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
 
         time.sleep(27)
 
