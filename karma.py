@@ -77,7 +77,7 @@ def on_message(client, userdata, message):
                         else:
                             output += f'{row[0]}:{row[1]}'
 
-                    if output == ''
+                    if output == '':
                         client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'"{word}" has no karma (yet)')
 
                     else:
