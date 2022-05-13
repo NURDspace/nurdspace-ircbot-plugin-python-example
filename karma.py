@@ -61,7 +61,7 @@ def on_message(client, userdata, message):
                 cur.close()
 
             elif command == 'rkarma':
-                query = 'SELECT who, count FROM rkarma WHERE channel=? AND word=? ORDER BY nick'
+                query = 'SELECT who, count FROM rkarma WHERE channel=? AND word=? ORDER BY who'
 
                 cur = con.cursor()
 
@@ -70,12 +70,16 @@ def on_message(client, userdata, message):
 
                     output = ''
 
-                    for row in cur.fetchone():
+                    for row in cur.fetchall():
                         if output != '':
                             output += ', '
 
-                        else:
-                            output += f'{row[0]}:{row[1]}'
+                        who = row[0]
+
+                        if '!' in who:
+                            who = who[:who.find('!')]
+
+                        output += f'{who}={row[1]}'
 
                     if output == '':
                         client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'"{word}" has no karma (yet)')
