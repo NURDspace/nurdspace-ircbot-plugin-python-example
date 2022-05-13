@@ -20,10 +20,21 @@ cur = con.cursor()
 cur.execute('PRAGMA journal_mode=wal')
 cur.close()
 
+def announce_commands(client):
+    target_topic = f'{topic_prefix}to/bot/register'
+
+    client.publish(target_topic, 'cmd=karma|descr=Show karma of a word/entity.')
+    client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
+
 def on_message(client, userdata, message):
     text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
+
+    if topic == 'from/bot/command' and text == 'register':
+        announce_commands(client)
+
+        return
 
     parts = topic.split('/')
     channel = parts[2]
@@ -157,26 +168,11 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         client.subscribe(f'{topic_prefix}from/irc/#')
 
-def announcer(client):
-    target_topic = f'{topic_prefix}to/bot/register'
-
-    print(f'Announcing to {target_topic}')
-
-    while True:
-        time.sleep(3)
-
-        client.publish(target_topic, 'cmd=karma|descr=Show karma of a word/entity.')
-
-        client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
-
-        time.sleep(27)
-
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 client.on_message = on_message
 client.on_connect = on_connect
 
-t = threading.Thread(target=announcer, args=(client,))
-t.start()
+announce_commands(client)
 
 client.loop_forever()
