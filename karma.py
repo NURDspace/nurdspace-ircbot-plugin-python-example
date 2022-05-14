@@ -32,6 +32,8 @@ def on_message(client, userdata, message):
     topic = message.topic[len(topic_prefix):]
 
     if topic == 'from/bot/command' and text == 'register':
+        print('Bot restarted?')
+
         announce_commands(client)
 
         return
@@ -167,6 +169,8 @@ def on_message(client, userdata, message):
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
         client.subscribe(f'{topic_prefix}from/irc/#')
+
+        client.subscribe(f'{topic_prefix}from/bot/command')
 
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
