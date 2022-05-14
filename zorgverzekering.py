@@ -60,6 +60,8 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         client.subscribe(f'{topic_prefix}from/irc/#')
 
+        client.subscribe(f'{topic_prefix}from/bot/command')
+
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 client.on_message = on_message
