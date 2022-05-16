@@ -36,6 +36,7 @@ def announce_commands(client):
 
     client.publish(target_topic, 'cmd=addquote|descr=Add a quote: addquote <nick> <text> -> returns a number')
     client.publish(target_topic, 'cmd=delquote|descr=Delete a quote by the number returned by addquote: delquote <number>')
+    client.publish(target_topic, 'cmd=quote|descr=Show a random quote (for a [nick])')
     client.publish(target_topic, 'cmd=re|descr=Show something quoted from you')
 
 def on_message(client, userdata, message):
@@ -114,10 +115,13 @@ def on_message(client, userdata, message):
                 else:
                     client.publish(response_topic, 'Invalid parameters')
 
-            elif command == 're' or parts[4] == 'JOIN':
+            elif command == 're' or parts[4] == 'JOIN' or command == 'quote':
                 cur = con.cursor()
 
                 try:
+                    if command == 'quote' and len(tokens) == 2:
+                        nick = tokens[1]
+
                     if '!' in nick:
                         nick = nick.split('!')[0]
 
@@ -128,6 +132,9 @@ def on_message(client, userdata, message):
                     if row == None:
                         if command == 're':
                             client.publish(response_topic, f'You have not been quoted yet')
+
+                        elif command == 'quote':
+                            client.publish(response_topic, f'No quotes for {nick}')
 
                     else:
                         client.publish(response_topic, f'[{nick}]: {row[0]} ({row[1]})')
