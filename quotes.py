@@ -43,9 +43,9 @@ def on_message(client, userdata, message):
 
     topic = message.topic[len(topic_prefix):]
 
-    if topic == 'from/bot/command' and text == 'register':
-        print('Bot restarted?')
+    # print(topic)
 
+    if topic == 'from/bot/command' and text == 'register':
         announce_commands(client)
 
         return
@@ -57,9 +57,11 @@ def on_message(client, userdata, message):
     if channel in channels:
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
-        if text[0] == '~':
-            tokens  = text.split(' ')
+        tokens  = text.split(' ')
 
+        # print(parts[4], tokens)
+
+        if text[0] == '~' or parts[4] == 'JOIN':
             command = tokens[0][1:]
 
             if command == 'addquote':
@@ -112,7 +114,7 @@ def on_message(client, userdata, message):
                 else:
                     client.publish(response_topic, 'Invalid parameters')
 
-            elif command == 're':
+            elif command == 're' or parts[4] == 'JOIN':
                 cur = con.cursor()
 
                 try:
@@ -124,10 +126,11 @@ def on_message(client, userdata, message):
                     row = cur.fetchone()
 
                     if row == None:
-                        client.publish(response_topic, f'You have not been quoted yet')
+                        if command == 're':
+                            client.publish(response_topic, f'You have not been quoted yet')
 
                     else:
-                        client.publish(response_topic, f'{row[0]} ({row[1]})')
+                        client.publish(response_topic, f'[{nick}]: {row[0]} ({row[1]})')
 
                 except Exception as e:
                     client.publish(response_topic, f'Exception: {e}')
