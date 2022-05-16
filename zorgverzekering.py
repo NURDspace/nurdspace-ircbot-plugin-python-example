@@ -38,19 +38,21 @@ def on_message(client, userdata, message):
     print(channel, nick, text)
 
     if channel in channels:
-        if text[1:16] == 'zorgverzekering':
+        command = text[1:].split(' ')[0]
+
+        if command == 'zorgverzekering':
             client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', 'Het beste neem je een zorgverzekering die je ziektekosten afdekt.')
 
-        elif text[1:] == 'z':
+        elif command == 'z':
             client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', 'Truste!')
 
-        elif text[1:] == 'test':
+        elif command == 'test':
             client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', 'Deze dingetje werks.')
 
-        elif text[1:] == 'quit':
+        elif command == 'quit':
             client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', 'NOOID!')
 
-        elif text[1:] == 'oens':
+        elif command == 'oens':
             client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', 'OENS OENS OENS')
 
         else:
