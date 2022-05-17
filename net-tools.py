@@ -5,11 +5,13 @@
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 
 # ping3 from pip
+# ntplib from pip
 
+import ntplib
 import paho.mqtt.client as mqtt
 from ping3 import ping
 import threading
-import time
+from time import ctime
 
 
 mqtt_server  = '192.168.64.1'
@@ -20,6 +22,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=ping|descr=Perform ping (ICMP request) on $parameter.')
+    client.publish(target_topic, 'cmd=time|descr=What point on the vector of time are we right now.')
 
 def on_message(client, userdata, message):
     text = message.payload.decode('utf-8')
@@ -47,10 +50,27 @@ def on_message(client, userdata, message):
                 host = tokens[1]
                 time = ping(host, unit='ms')
 
-                client.publish(response_topic, f'Pinging {host} took {time:.2f} milliseconds')
+                if time == None:
+                    client.publish(response_topic, f'Cannot ping {host} because of an unknown reason')
+
+                else:
+                    client.publish(response_topic, f'Pinging {host} took {time:.2f} milliseconds')
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters for ping.')
+
+        elif command == 'time':
+            try:
+                t        = ntplib.NTPClient()
+
+                response = t.request('myip.vanheusden.com', version=3)
+
+                t_string = ctime(response.tx_time)
+
+                client.publish(response_topic, f'It is now +/- {t_string} and the computer this bot-plugin runs on is {response.offset:.3f} seconds off.')
+
+            except Exception as e:
+                client.publish(response_topic, f'Failed determining time ({e})')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
