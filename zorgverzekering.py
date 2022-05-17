@@ -68,14 +68,14 @@ def on_message(client, userdata, message):
         elif command == 'choose':
             choices = ' '.join(text.split(' ')[1:]).split(',')
 
-            client.publish(response_topic, random.choice(choices))
+            client.publish(response_topic, random.choice(choices).strip())
 
         elif command == 'secondopinion':
             if len(choices) == 0:
                 client.publish(response_topic, 'Nothing to choose from')
 
             else:
-                client.publish(response_topic, random.choice(choices))
+                client.publish(response_topic, random.choice(choices).strip())
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
