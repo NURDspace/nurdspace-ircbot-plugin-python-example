@@ -20,6 +20,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=next|descr=Skip to the next track.')
+    client.publish(target_topic, 'cmd=prev|descr=Skip to the previous track.')
     client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
 
 def on_message(client, userdata, message):
@@ -38,7 +39,7 @@ def on_message(client, userdata, message):
 
     command = text[1:].split(' ')[0]
 
-    if channel in channels and command in ['next', 'np']:
+    if channel in channels and command in ['next', 'np', 'prev']:
 
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
@@ -52,6 +53,11 @@ def on_message(client, userdata, message):
                 mpd_client.next()
 
                 client.publish(response_topic, f'Skipped {current_song}')
+
+            elif command == 'prev':
+                mpd_client.previous()
+
+                client.publish(response_topic, f'Went back to the previous song')
 
             elif command == 'np':
                 client.publish(response_topic, f'Now playing: {current_song}')
