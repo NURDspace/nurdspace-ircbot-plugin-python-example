@@ -47,7 +47,7 @@ def on_message(client, userdata, message):
                 host = tokens[1]
                 time = ping(host, unit='ms')
 
-                client.publish(response_topic, f'Pinging {host} took {time} milliseconds')
+                client.publish(response_topic, f'Pinging {host} took {time:.2f} milliseconds')
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters for ping.')
