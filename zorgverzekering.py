@@ -6,6 +6,7 @@
 
 import paho.mqtt.client as mqtt
 import random
+import requests
 import threading
 import time
 
@@ -13,19 +14,33 @@ mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'test']
 
-
 choices      = []
+
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=zorgverzekering|descr=Hulp bij de keuze van een zorgverzekering.')
-    client.publish(target_topic, 'cmd=z|descr=Aankondiging van uitschakeling der neocortex for enige tijd.')
     client.publish(target_topic, 'cmd=test|descr=Werkt deze dingetje?')
     client.publish(target_topic, 'cmd=quit|descr=Afsluiten')
-    client.publish(target_topic, 'cmd=oens|descr=Eh...')
     client.publish(target_topic, 'cmd=choose|descr=Choose between comma seperated choices.')
     client.publish(target_topic, 'cmd=secondopinion|descr=Eh...')
+    client.publish(target_topic, 'cmd=spacehex|descr=Show current color of the space.')
+
+def parse_to_rgb(json):
+    if "value" in json:
+        return int(round((json['value'] / 100) * 255))
+
+
+def get_json(url):
+    r = requests.get(url)
+
+    return r.json()
+
+def get_rgb():
+    return [parse_to_rgb(
+                get_json("http://lichtsensor.dhcp.nurd.space/sensor/tcs34725_" + channel + "_channel"))
+                for channel in ["red", "green", "blue"]]
 
 def on_message(client, userdata, message):
     global choices
@@ -53,17 +68,11 @@ def on_message(client, userdata, message):
         if command == 'zorgverzekering':
             client.publish(response_topic, 'Het beste neem je een zorgverzekering die je ziektekosten afdekt.')
 
-        elif command == 'z':
-            client.publish(response_topic, 'Truste!')
-
         elif command == 'test':
             client.publish(response_topic, 'Deze dingetje werks.')
 
         elif command == 'quit':
             client.publish(response_topic, 'NOOID!')
-
-        elif command == 'oens':
-            client.publish(response_topic, 'OENS OENS OENS')
 
         elif command == 'choose':
             choices = ' '.join(text.split(' ')[1:]).split(',')
@@ -76,6 +85,11 @@ def on_message(client, userdata, message):
 
             else:
                 client.publish(response_topic, random.choice(choices).strip())
+
+        elif command == 'spacehex':
+            hexcolor = "#{:02x}{:02x}{:02x}".format(*get_rgb())
+
+            client.publish(response_topic, 'Current hex color of zaal 1 is: ' + hexcolor)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
