@@ -20,20 +20,24 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=doorbell|descr=Doorbell statistics')
 
 def on_message(client, userdata, message):
+    global last_ring
+
     text = message.payload.decode('utf-8')
+
+    if message.topic == 'deurbel':
+        last_ring = time.ctime()
+
+        for channel in channels:
+            announce_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+
+            client.publish(announce_topic, '*** DOORBELL ***')
+
+        return
 
     topic = message.topic[len(topic_prefix):]
 
     if topic == 'from/bot/command' and text == 'register':
         announce_commands(client)
-
-        return
-
-    if topic == 'deurbel':
-        for channel in channels:
-            announce_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
-
-            client.publish(announce_topic, '*** DOORBELL ***')
 
         return
 
@@ -53,7 +57,7 @@ def on_message(client, userdata, message):
                 client.publish(response_topic, 'The doorbell never rang')
 
             else:
-                client.publish(response_topic, 'Last ring: {last_ring}')
+                client.publish(response_topic, f'Last ring: {last_ring}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -63,11 +67,22 @@ def on_connect(client, userdata, flags, rc):
 
         client.subscribe(f'deurbel')
 
+def announce_thread(client):
+    while True:
+        try:
+            announce_commands(client)
+
+            time.sleep(2.5)
+
+        except Exception as e:
+            print(f'Failed to announce: {e}')
+
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 client.on_message = on_message
 client.on_connect = on_connect
 
-announce_commands(client)
+t = threading.Thread(target=announce_thread, args=(client,))
+t.start()
 
 client.loop_forever()
