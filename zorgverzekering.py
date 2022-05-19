@@ -30,6 +30,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=spacehex|descr=Show current color of the space.')
     client.publish(target_topic, 'cmd=wau-temp|descr=Temperature etc. in Wageningen.')
     client.publish(target_topic, 'cmd=allot|descr=Show allotments for a given day')
+    client.publish(target_topic, 'cmd=rijnstreek|descr=Rijnstreek FM currently playing')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -117,6 +118,15 @@ def cmd_allot(client, response_topic, value):
     except Exception as e:
         client.publish(response_topic, f'Exception during "allot": {e}, line number: {e.__traceback__.tb_lineno}')
 
+def cmd_rijnstreek(client, response_topic):
+    try:
+        r = requests.get('https://bit.rtvrijnstreek.nl/web.html')
+
+        client.publish(response_topic, r.content.decode('utf-8').splitlines()[0])
+
+    except Exception as e:
+        client.publish(response_topic, f'Exception during "rijnstreek": {e}, line number: {e.__traceback__.tb_lineno}')
+
 def on_message(client, userdata, message):
     global choices
 
@@ -174,6 +184,9 @@ def on_message(client, userdata, message):
 
         elif command == 'allot':
             cmd_allot(client, response_topic, value)
+
+        elif command == 'rijnstreek':
+            cmd_rijnstreek(client, response_topic)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
