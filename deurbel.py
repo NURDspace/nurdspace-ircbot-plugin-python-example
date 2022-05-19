@@ -72,7 +72,7 @@ def announce_thread(client):
         try:
             announce_commands(client)
 
-            time.sleep(2.5)
+            time.sleep(4.1)
 
         except Exception as e:
             print(f'Failed to announce: {e}')

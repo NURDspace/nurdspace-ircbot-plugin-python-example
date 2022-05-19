@@ -11,10 +11,10 @@ import ntplib
 import paho.mqtt.client as mqtt
 from ping3 import ping
 import threading
-from time import ctime
+import time
 
 
-mqtt_server  = '192.168.64.1'
+mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'test']
 
@@ -65,7 +65,7 @@ def on_message(client, userdata, message):
 
                 response = t.request('myip.vanheusden.com', version=3)
 
-                t_string = ctime(response.tx_time)
+                t_string = time.ctime(response.tx_time)
 
                 client.publish(response_topic, f'It is now +/- {t_string} and the computer this bot-plugin runs on is {response.offset:.3f} seconds off.')
 
@@ -78,11 +78,22 @@ def on_connect(client, userdata, flags, rc):
 
         client.subscribe(f'{topic_prefix}from/bot/command')
 
+def announce_thread(client):
+    while True:
+        try:
+            announce_commands(client)
+
+            time.sleep(4.1)
+
+        except Exception as e:
+            print(f'Failed to announce: {e}')
+
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 client.on_message = on_message
 client.on_connect = on_connect
 
-announce_commands(client)
+t = threading.Thread(target=announce_thread, args=(client,))
+t.start()
 
 client.loop_forever()
