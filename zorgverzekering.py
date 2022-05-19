@@ -9,6 +9,8 @@ import random
 import requests
 import threading
 import time
+import urllib.parse
+
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
@@ -27,6 +29,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=secondopinion|descr=Eh...')
     client.publish(target_topic, 'cmd=spacehex|descr=Show current color of the space.')
     client.publish(target_topic, 'cmd=wau-temp|descr=Temperature etc. in Wageningen.')
+    client.publish(target_topic, 'cmd=allot|descr=Show allotments for a given day')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -103,6 +106,17 @@ def cmd_wau_temp(client, response_topic):
     except Exception as e:
         client.publish(response_topic, f'Exception during "wau-temp": {e}, line number: {e.__traceback__.tb_lineno}')
 
+def cmd_allot(client, response_topic, value):
+    try:
+        value = '' if value == None else value.lower()
+
+        r = requests.get('https://portal.nurdspace.nl/nurdallot/public/reportallotniz.php?day=' + urllib.parse.quote(value[0:25]), timeout=10)
+
+        client.publish(response_topic, r.content.decode('ascii'))
+
+    except Exception as e:
+        client.publish(response_topic, f'Exception during "allot": {e}, line number: {e.__traceback__.tb_lineno}')
+
 def on_message(client, userdata, message):
     global choices
 
@@ -115,11 +129,14 @@ def on_message(client, userdata, message):
 
         return
 
-    parts = topic.split('/')
-    channel = parts[2]
-    nick = parts[3]
+    parts   = topic.split('/')
+    channel = parts[2] if len(parts) >= 3 else 'nurdbottest'
+    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
-    print(channel, nick, text)
+    parts     = text.split(' ')
+    command   = parts[0][1:]
+    value     = parts[1]  if len(parts) >= 2 else None
+    value_all = parts[1:] if len(parts) >= 2 else None
 
     if channel in channels:
         command = text[1:].split(' ')[0]
@@ -154,6 +171,9 @@ def on_message(client, userdata, message):
 
         elif command == 'wau-temp':
             cmd_wau_temp(client, response_topic)
+
+        elif command == 'allot':
+            cmd_allot(client, response_topic, value)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
