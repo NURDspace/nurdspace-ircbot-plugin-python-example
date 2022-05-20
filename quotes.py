@@ -11,7 +11,7 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'nurds', 'test']
+channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
 db_file      = 'quotes.db'
 
 con = sqlite3.connect(db_file)
@@ -66,7 +66,11 @@ def on_message(client, userdata, message):
         if text[0] == '!' or parts[4] == 'JOIN':
             command = tokens[0][1:]
 
+            # print(command)
+
             if command == 'addquote':
+                # print(tokens)
+
                 if len(tokens) >= 3:
                     cur = con.cursor()
 
@@ -126,7 +130,7 @@ def on_message(client, userdata, message):
                     if '!' in nick:
                         nick = nick.split('!')[0]
 
-                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (INSTR(about_whom, ?) OR INSTR(?, about_whom)) AND _ROWID_ >= (abs(random()) % (SELECT max(_ROWID_) + 1 FROM quotes)) LIMIT 1', (channel, nick, nick))
+                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (about_whom=? OR NOT INSTR(about_whom, ?) = 0 OR NOT INSTR(?, about_whom) = 0) AND _ROWID_ >= (abs(random()) % (SELECT max(_ROWID_) FROM quotes)) LIMIT 1', (channel, nick, nick, nick))
 
                     row = cur.fetchone()
 
@@ -151,16 +155,22 @@ def on_message(client, userdata, message):
                 try:
                     query = ' '.join(tokens[1:])
 
-                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE quote like ? LIMIT 1', (f'%{query}%',))
+                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE channel=? AND quote like ?', (channel, f'%{query}%'))
 
-                    output = ''
+                    output = None
 
                     rows = cur.fetchall()
 
                     for row in rows:
+                        if output == None:
+                            output = ''
+
+                        else:
+                            output += ' / '
+
                         output += f'[{row[1]}]: {row[0]} ({row[2]})'
 
-                    if output != '':
+                    if output != None:
                         client.publish(response_topic, f'Matching quote(s): {output}')
 
                     else:
