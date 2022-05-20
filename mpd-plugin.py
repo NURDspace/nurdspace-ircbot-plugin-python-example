@@ -12,7 +12,7 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test']
+channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
 mpd_server   = 'spacesound.vm.nurd.space'
 mpd_port     = 6600
 
@@ -60,7 +60,31 @@ def on_message(client, userdata, message):
                 client.publish(response_topic, f'Went back to the previous song')
 
             elif command == 'np':
-                client.publish(response_topic, f'Now playing: {current_song}')
+                print(current_song)
+                playing = ''
+
+                if 'artist' in current_song and 'title' in current_song:
+                    playing += current_song['artist'] + ' - ' + current_song['title']
+
+                else:
+                    if 'title' in current_song:
+                        playing += f' title: {current_song["title"]}'
+
+                    if 'artist' in current_song:
+                        playing += f' (artist: {current_song["artist"]})'
+
+                if 'album' in current_song:
+                    playing += f' (album: {current_song["album"]})'
+
+                if playing.strip() == '' and 'file' in current_song:
+                    playing = current_song['file']
+
+                if 'duration' in current_song:
+                    duration = (float(current_song['duration']) + 59.999) / 60
+
+                    playing += f' (takes about {duration:.0f} minutes to play)'
+
+                client.publish(response_topic, f'Now playing: {playing}')
 
             mpd_client.close()
 
