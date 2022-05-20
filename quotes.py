@@ -11,7 +11,7 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test']
+channels     = ['nurdbottest', 'nurds', 'test']
 db_file      = 'quotes.db'
 
 con = sqlite3.connect(db_file)
@@ -62,7 +62,7 @@ def on_message(client, userdata, message):
 
         # print(parts[4], tokens)
 
-        if text[0] == '~' or parts[4] == 'JOIN':
+        if text[0] == '!' or parts[4] == 'JOIN':
             command = tokens[0][1:]
 
             if command == 'addquote':
@@ -125,7 +125,7 @@ def on_message(client, userdata, message):
                     if '!' in nick:
                         nick = nick.split('!')[0]
 
-                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND about_whom=? AND _ROWID_ >= (abs(random()) % (SELECT max(_ROWID_) + 1 FROM quotes)) LIMIT 1', (channel, nick))
+                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (INSTR(about_whom, ?) OR INSTR(?, about_whom)) AND _ROWID_ >= (abs(random()) % (SELECT max(_ROWID_) + 1 FROM quotes)) LIMIT 1', (channel, nick, nick))
 
                     row = cur.fetchone()
 
