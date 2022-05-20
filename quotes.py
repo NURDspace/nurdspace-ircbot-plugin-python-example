@@ -38,6 +38,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=delquote|descr=Delete a quote by the number returned by addquote: delquote <number>')
     client.publish(target_topic, 'cmd=quote|descr=Show a random quote (for a [nick])')
     client.publish(target_topic, 'cmd=re|descr=Show something quoted from you')
+    client.publish(target_topic, 'cmd=qs|descr=Search a quote by a search string')
 
 def on_message(client, userdata, message):
     text = message.payload.decode('utf-8')
@@ -138,6 +139,32 @@ def on_message(client, userdata, message):
 
                     else:
                         client.publish(response_topic, f'[{nick}]: {row[0]} ({row[1]})')
+
+                except Exception as e:
+                    client.publish(response_topic, f'Exception: {e}')
+
+                cur.close()
+
+            elif command == 'qs':
+                cur = con.cursor()
+
+                try:
+                    query = ' '.join(tokens[1:])
+
+                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE quote like ? LIMIT 1', (f'%{query}%',))
+
+                    output = ''
+
+                    rows = cur.fetchall()
+
+                    for row in rows:
+                        output += f'[{row[1]}]: {row[0]} ({row[2]})'
+
+                    if output != '':
+                        client.publish(response_topic, f'Matching quote(s): {output}')
+
+                    else:
+                        client.publish(response_topic, f'Nothing matched {query}')
 
                 except Exception as e:
                     client.publish(response_topic, f'Exception: {e}')
