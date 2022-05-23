@@ -124,13 +124,21 @@ def on_message(client, userdata, message):
                 cur = con.cursor()
 
                 try:
-                    if command == 'quote' and len(tokens) == 2:
-                        nick = tokens[1]
+                    if command == 'quote':
+                        if len(tokens) == 2:
+                            nick = tokens[1]
 
-                    if '!' in nick:
+                        else:
+                            nick = None
+
+                    if nick != None and '!' in nick:
                         nick = nick.split('!')[0]
 
-                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (about_whom=? OR about_whom like ? OR ? like printf("%%%s%%", about_whom)) ORDER BY RANDOM() LIMIT 1', (channel, nick, nick, nick))
+                    if nick == None:
+                        cur.execute('SELECT quote, nr, about_whom FROM quotes WHERE channel=? ORDER BY RANDOM() LIMIT 1', (channel,))
+
+                    else:
+                        cur.execute('SELECT quote, nr, about_whom FROM quotes WHERE channel=? AND (about_whom=? OR about_whom like ? OR ? like printf("%%%s%%", about_whom)) ORDER BY RANDOM() LIMIT 1', (channel, nick, nick, nick))
 
                     row = cur.fetchone()
 
@@ -142,7 +150,7 @@ def on_message(client, userdata, message):
                             client.publish(response_topic, f'No quotes for {nick}')
 
                     else:
-                        client.publish(response_topic, f'[{nick}]: {row[0]} ({row[1]})')
+                        client.publish(response_topic, f'[{row[2]}]: {row[0]} ({row[1]})')
 
                 except Exception as e:
                     client.publish(response_topic, f'Exception: {e}')
@@ -155,7 +163,7 @@ def on_message(client, userdata, message):
                 try:
                     query = ' '.join(tokens[1:])
 
-                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE channel=? AND quote like ?', (channel, f'%{query}%'))
+                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE channel=? AND quote like ? ORDER BY RANDOM()', (channel, f'%{query}%'))
 
                     output = None
 
