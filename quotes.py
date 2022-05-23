@@ -130,7 +130,7 @@ def on_message(client, userdata, message):
                     if '!' in nick:
                         nick = nick.split('!')[0]
 
-                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (about_whom=? OR about_whom like ? OR ? like printf("%%%s%%", about_whom)) ORDER BY RANDOM() LIMIT 1)', (channel, nick, nick, nick))
+                    cur.execute('SELECT quote, nr FROM quotes WHERE channel=? AND (about_whom=? OR about_whom like ? OR ? like printf("%%%s%%", about_whom)) ORDER BY RANDOM() LIMIT 1', (channel, nick, nick, nick))
 
                     row = cur.fetchone()
 
