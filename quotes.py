@@ -64,8 +64,8 @@ def on_message(client, userdata, message):
         return
 
     parts   = topic.split('/')
-    channel = parts[2].lower()
-    nick    = parts[3].lower()
+    channel = parts[2].lower() if len(parts) >= 3 else 'nurds'
+    nick    = parts[3].lower() if len(parts) >= 4 else 'jemoeder'
 
     if channel in channels:
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
@@ -74,7 +74,7 @@ def on_message(client, userdata, message):
 
         # print(parts[4], tokens)
 
-        if text[0] == '!' or parts[4] == 'JOIN':
+        if text[0] == prefix or parts[4] == 'JOIN':
             command = tokens[0][1:]
 
             # print(command)
