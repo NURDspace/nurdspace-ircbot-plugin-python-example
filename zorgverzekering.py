@@ -14,7 +14,7 @@ import urllib.parse
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test']
+channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
 
 choices      = []
 
@@ -31,6 +31,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=wau-temp|descr=Temperature etc. in Wageningen.')
     client.publish(target_topic, 'cmd=allot|descr=Show allotments for a given day')
     client.publish(target_topic, 'cmd=rijnstreek|descr=Rijnstreek FM currently playing')
+    client.publish(target_topic, 'cmd=janee|descr=Voor levensvragen')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -127,6 +128,9 @@ def cmd_rijnstreek(client, response_topic):
     except Exception as e:
         client.publish(response_topic, f'Exception during "rijnstreek": {e}, line number: {e.__traceback__.tb_lineno}')
 
+def cmd_janee(client, response_topic):
+    client.publish(response_topic, random.choice(['ja', 'nee', 'ja', 'nein']))
+
 def on_message(client, userdata, message):
     global choices
 
@@ -140,13 +144,15 @@ def on_message(client, userdata, message):
         return
 
     parts   = topic.split('/')
-    channel = parts[2] if len(parts) >= 3 else 'nurdbottest'
+    channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     parts     = text.split(' ')
     command   = parts[0][1:]
     value     = parts[1]  if len(parts) >= 2 else None
     value_all = parts[1:] if len(parts) >= 2 else None
+
+    print(channel, nick, command, value)
 
     if channel in channels:
         command = text[1:].split(' ')[0]
@@ -183,10 +189,14 @@ def on_message(client, userdata, message):
             cmd_wau_temp(client, response_topic)
 
         elif command == 'allot':
+            print(client, response_topic, value)
             cmd_allot(client, response_topic, value)
 
         elif command == 'rijnstreek':
             cmd_rijnstreek(client, response_topic)
+
+        elif command == 'janee':
+            cmd_janee(client, response_topic)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
