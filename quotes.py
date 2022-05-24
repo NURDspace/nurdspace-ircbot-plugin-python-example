@@ -13,6 +13,7 @@ mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
 db_file      = 'quotes.db'
+prefix       = '!'
 
 con = sqlite3.connect(db_file)
 
@@ -41,6 +42,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=qs|descr=Search a quote by a search string')
 
 def on_message(client, userdata, message):
+    global prefix
+
     text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
@@ -50,6 +53,14 @@ def on_message(client, userdata, message):
     if topic == 'from/bot/command' and text == 'register':
         announce_commands(client)
 
+        return
+
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
+
+        return
+
+    if text[0] != prefix:
         return
 
     parts   = topic.split('/')

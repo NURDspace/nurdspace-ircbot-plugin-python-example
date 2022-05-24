@@ -16,7 +16,8 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test']
+channels     = ['nurdbottest', 'nurds', 'test']
+prefix       = '!'
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -25,6 +26,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=time|descr=What point on the vector of time are we right now.')
 
 def on_message(client, userdata, message):
+    global prefix
+
     text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
@@ -34,9 +37,17 @@ def on_message(client, userdata, message):
 
         return
 
-    parts = topic.split('/')
-    channel = parts[2]
-    nick = parts[3]
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
+
+        return
+
+    if text[0] != prefix:
+        return
+
+    parts   = topic.split('/')
+    channel = parts[2] if len(parts) >= 3 else 'nurds'
+    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     if channel in channels:
         tokens  = text.split(' ')

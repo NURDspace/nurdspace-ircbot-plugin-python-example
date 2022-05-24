@@ -15,6 +15,7 @@ import urllib.parse
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
+prefix       = '!'
 
 choices      = []
 
@@ -133,6 +134,7 @@ def cmd_janee(client, response_topic):
 
 def on_message(client, userdata, message):
     global choices
+    global prefix
 
     text = message.payload.decode('utf-8')
 
@@ -141,6 +143,14 @@ def on_message(client, userdata, message):
     if topic == 'from/bot/command' and text == 'register':
         announce_commands(client)
 
+        return
+
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
+
+        return
+
+    if text[0] != prefix:
         return
 
     parts   = topic.split('/')

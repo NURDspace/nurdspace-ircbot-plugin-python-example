@@ -5,6 +5,7 @@
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 # also python-mpd2 is required (via pip)
 
+import math
 from mpd import MPDClient
 import paho.mqtt.client as mqtt
 import threading
@@ -15,6 +16,7 @@ topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
 mpd_server   = 'spacesound.vm.nurd.space'
 mpd_port     = 6600
+prefix       = '!'
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -24,6 +26,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
 
 def on_message(client, userdata, message):
+    global prefix
+
     text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
@@ -33,14 +37,21 @@ def on_message(client, userdata, message):
 
         return
 
-    parts = topic.split('/')
-    channel = parts[2]
-    nick = parts[3]
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
+
+        return
+
+    if text[0] != prefix:
+        return
+
+    parts   = topic.split('/')
+    channel = parts[2] if len(parts) >= 3 else 'nurds'
+    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     command = text[1:].split(' ')[0]
 
     if channel in channels and command in ['next', 'np', 'prev']:
-
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         try:
@@ -80,9 +91,15 @@ def on_message(client, userdata, message):
                     playing = current_song['file']
 
                 if 'duration' in current_song:
-                    duration = (float(current_song['duration']) + 59.999) / 60
+                    current_song_duration = float(current_song['duration'])
 
-                    playing += f' (takes about {duration:.0f} minutes to play)'
+                    duration_minutes = math.floor(current_song_duration / 60)
+
+                    if math.fmod(current_song_duration, 60) >= 30:
+                        playing += f' (takes almost {duration_minutes + 1:.0f} minutes to play)'
+
+                    else:
+                        playing += f' (takes about {duration:.0f} minutes to play)'
 
                 client.publish(response_topic, f'Now playing: {playing}')
 

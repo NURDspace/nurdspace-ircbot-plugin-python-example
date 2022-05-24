@@ -11,8 +11,9 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test']
+channels     = ['nurdbottest', 'test', 'nurdsbofh']
 db_file      = 'karma.db'
+prefix       = '!'
 
 con = sqlite3.connect(db_file)
 
@@ -27,6 +28,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
 
 def on_message(client, userdata, message):
+    global prefix
+
     text = message.payload.decode('utf-8')
 
     topic = message.topic[len(topic_prefix):]
@@ -38,12 +41,12 @@ def on_message(client, userdata, message):
 
         return
 
-    parts = topic.split('/')
-    channel = parts[2]
-    nick = parts[3]
+    parts   = topic.split('/')
+    channel = parts[2] if len(parts) >= 3 else 'nurds'
+    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     if channel in channels:
-        if text[0] == '~':
+        if text[0] == prefix:
             tokens  = text.split(' ')
 
             if len(tokens) != 2:

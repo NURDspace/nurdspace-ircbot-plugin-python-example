@@ -11,6 +11,7 @@ import time
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
+prefix       = '!'
 
 last_ring    = None
 
@@ -21,6 +22,7 @@ def announce_commands(client):
 
 def on_message(client, userdata, message):
     global last_ring
+    global prefix
 
     text = message.payload.decode('utf-8')
 
@@ -41,13 +43,19 @@ def on_message(client, userdata, message):
 
         return
 
-    parts = topic.split('/')
-    channel = parts[2]
-    nick = parts[3]
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
+
+        return
+
+    parts   = topic.split('/')
+    channel = parts[2] if len(parts) >= 3 else 'nurds'
+    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
+
+    if text[0] != prefix:
+        return
 
     command = text[1:].split(' ')[0]
-
-    print(channel, command)
 
     if channel in channels:
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
