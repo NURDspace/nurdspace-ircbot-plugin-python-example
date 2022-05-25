@@ -25,6 +25,38 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=prev|descr=Skip to the previous track.')
     client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
 
+def gen_song_name(song_meta):
+    playing = ''
+
+    if 'artist' in song_meta and 'title' in song_meta:
+        playing += song_meta['artist'] + ' - ' + song_meta['title']
+
+    else:
+        if 'title' in song_meta:
+            playing += f' title: {song_meta["title"]}'
+
+        if 'artist' in song_meta:
+            playing += f' (artist: {song_meta["artist"]})'
+
+    if 'album' in song_meta:
+        playing += f' (album: {song_meta["album"]})'
+
+    if playing.strip() == '' and 'file' in song_meta:
+        playing = song_meta['file']
+
+    if 'duration' in song_meta:
+        song_meta = float(song_meta['duration'])
+
+        duration_minutes = math.floor(song_meta / 60)
+
+        if math.fmod(song_meta, 60) >= 30:
+            playing += f' (takes almost {duration_minutes + 1:.0f} minutes to play)'
+
+        else:
+            playing += f' (takes about {duration_minutes:.0f} minutes to play)'
+
+    return playing
+
 def on_message(client, userdata, message):
     global prefix
 
@@ -60,10 +92,12 @@ def on_message(client, userdata, message):
 
             current_song = mpd_client.currentsong()
 
+            playing = gen_song_name(current_song)
+
             if command == 'next':
                 mpd_client.next()
 
-                client.publish(response_topic, f'Skipped {current_song}')
+                client.publish(response_topic, f'Skipped {playing}')
 
             elif command == 'prev':
                 mpd_client.previous()
@@ -72,34 +106,6 @@ def on_message(client, userdata, message):
 
             elif command == 'np':
                 print(current_song)
-                playing = ''
-
-                if 'artist' in current_song and 'title' in current_song:
-                    playing += current_song['artist'] + ' - ' + current_song['title']
-
-                else:
-                    if 'title' in current_song:
-                        playing += f' title: {current_song["title"]}'
-
-                    if 'artist' in current_song:
-                        playing += f' (artist: {current_song["artist"]})'
-
-                if 'album' in current_song:
-                    playing += f' (album: {current_song["album"]})'
-
-                if playing.strip() == '' and 'file' in current_song:
-                    playing = current_song['file']
-
-                if 'duration' in current_song:
-                    current_song_duration = float(current_song['duration'])
-
-                    duration_minutes = math.floor(current_song_duration / 60)
-
-                    if math.fmod(current_song_duration, 60) >= 30:
-                        playing += f' (takes almost {duration_minutes + 1:.0f} minutes to play)'
-
-                    else:
-                        playing += f' (takes about {duration:.0f} minutes to play)'
 
                 client.publish(response_topic, f'Now playing: {playing}')
 
