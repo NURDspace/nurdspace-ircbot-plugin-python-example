@@ -11,7 +11,7 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'test', 'nurdsbofh']
+channels     = ['nurdbottest', 'test', 'nurdsbofh', 'nurds']
 db_file      = 'karma.db'
 prefix       = '!'
 
@@ -38,6 +38,11 @@ def on_message(client, userdata, message):
         print('Bot restarted?')
 
         announce_commands(client)
+
+        return
+
+    if topic == 'from/bot/parameter/prefix':
+        prefix = text
 
         return
 
