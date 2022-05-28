@@ -60,6 +60,9 @@ def on_message(client, userdata, message):
 
         return
 
+    if len(text) == 0:
+        return
+
     if text[0] != prefix:
         return
 

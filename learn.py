@@ -91,7 +91,7 @@ def on_message(client, userdata, message):
             else:
                 client.publish(response_topic, 'Nick or fact missing. Also the word "is" should be there.')
 
-        elif command[-1] == '?':
+        elif len(command) > 1 and command[-1] == '?':
             cur = con.cursor()
 
             try:
@@ -108,10 +108,7 @@ def on_message(client, userdata, message):
                     else:
                         facts += ' / ' + row[0]
 
-                if facts == None:
-                    client.publish(response_topic, f'No facts known about {word}')
-
-                else:
+                if facts != None:
                     client.publish(response_topic, f'{word} is: {facts}')
 
             except Exception as e:

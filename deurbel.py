@@ -48,6 +48,9 @@ def on_message(client, userdata, message):
 
         return
 
+    if len(text) == 0:
+        return
+
     parts   = topic.split('/')
     channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
