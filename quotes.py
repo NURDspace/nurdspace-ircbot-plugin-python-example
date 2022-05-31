@@ -20,6 +20,7 @@ con = sqlite3.connect(db_file)
 cur = con.cursor()
 try:
     cur.execute('CREATE TABLE quotes(nr INTEGER PRIMARY KEY, channel TEXT NOT NULL, added_by TEXT NOT NULL, about_whom TEXT NOT NULL, quote TEXT NOT NULL)')
+    cur.execute('CREATE TABLE quotealias(irc_hostmask TEXT NOT NULL PRIMARY KEY, alias TEXT NOT NULL)')
     cur.execute('CREATE INDEX quotes_about_who ON quotes(about_whom)')
 except sqlite3.OperationalError as oe:
     # should be "table already exists"
@@ -38,6 +39,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=addquote|descr=Add a quote: addquote <nick> <text> -> returns a number')
     client.publish(target_topic, 'cmd=delquote|descr=Delete a quote by the number returned by addquote: delquote <number>')
     client.publish(target_topic, 'cmd=quote|descr=Show a random quote (for a [nick])')
+    client.publish(target_topic, 'cmd=quotealias|descr=Adds an alias to search for quotes for an irc-hostmask')
     client.publish(target_topic, 'cmd=re|descr=Show something quoted from you')
     client.publish(target_topic, 'cmd=qs|descr=Search a quote by a search string')
 
@@ -145,8 +147,13 @@ def on_message(client, userdata, message):
                         else:
                             nick = None
 
+                    hostmask = None
+
                     if nick != None and '!' in nick:
-                        nick = nick.split('!')[0]
+                        parts = nick.split('!')
+
+                        hostmask = parts[1]
+                        nick     = parts[0]
 
                     if nick == None:
                         cur.execute('SELECT quote, nr, about_whom FROM quotes WHERE channel=? ORDER BY RANDOM() LIMIT 1', (channel,))
@@ -154,7 +161,12 @@ def on_message(client, userdata, message):
                     else:
                         cur.execute('SELECT quote, nr, about_whom FROM quotes WHERE channel=? AND (about_whom=? OR about_whom like ? OR ? like printf("%%%s%%", about_whom)) ORDER BY RANDOM() LIMIT 1', (channel, nick, nick, nick))
 
-                    row = cur.fetchone()
+                        row = cur.fetchone()
+
+                        if row == None:
+                            cur.execute('SELECT quote, nr, about_whom FROM quotes, quotealias WHERE channel=? AND quotealias.irc_hostmask like ? AND quotes.about_whom LIKE printf("%%%s%%", quotealias.alias) ORDER BY RANDOM() LIMIT 1', (channel, hostmask))
+
+                            row = cur.fetchone()
 
                     if row == None:
                         if command == 're':
@@ -202,6 +214,27 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, f'Exception: {e}')
 
                 cur.close()
+
+            elif command == 'quotealias':
+                if len(tokens) >= 3:
+                    cur = con.cursor()
+
+                    try:
+                        cur.execute('INSERT INTO quotealias(irc_hostmask, alias) VALUES(?, ?)', (tokens[1].lower(), tokens[2].lower()))
+
+                        nr = cur.lastrowid
+
+                        client.publish(response_topic, f'{tokens[1]} is an alias for {tokens[2]} now')
+
+                    except Exception as e:
+                        client.publish(response_topic, f'Exception: {e}')
+
+                    cur.close()
+
+                    con.commit()
+
+                else:
+                    client.publish(response_topic, 'hostmask or alias missing')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
