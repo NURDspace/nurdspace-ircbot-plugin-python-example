@@ -3,14 +3,15 @@
 # by FvH, released under Apache License v2.0
 
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
+# also: pip3 install feedparser or apt install python3-feedparser
 
+import feedparser
 import paho.mqtt.client as mqtt
 import random
 import sqlite3
 import threading
 import time
 import urllib.request
-import xml.etree.ElementTree as ET
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
@@ -44,11 +45,13 @@ feeds = dict()
 cur.execute('SELECT name, url, interval FROM feeds')
 
 for row in cur.fetchall():
-    feeds[row[0]]             = dict()
-    feeds[row[0]]['url']      = row[1]
-    feeds[row[0]]['interval'] = row[2]
-    feeds[row[0]]['last_poll'] = 0
-    feeds[row[0]]['text']     = None
+    name = row[0]
+
+    feeds[name]             = dict()
+    feeds[name]['url']      = row[1]
+    feeds[name]['interval'] = row[2]
+    feeds[name]['last_poll'] = 0
+    feeds[name]['tree']     = None
 
 cur.close()
 
@@ -60,10 +63,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=addrss|descr=Add an RSS feed: addrss <name> <url>')
 
     for feed in feeds:
-        print(f'{feed} ', end='')
         client.publish(target_topic, f'cmd={feed}|descr=Show RSS feed {feed}')
-
-    print('')
 
 def on_message(client, userdata, message):
     global prefix
@@ -133,12 +133,10 @@ def on_message(client, userdata, message):
                 name = command.lower()
 
                 if name in feeds:
-                    # TODO show latest, not random
-
                     try:
                         now = time.time()
 
-                        if feeds[name]['text'] == None or now - feeds[name]['last_poll'] >= feeds[name]['interval']:
+                        if feeds[name]['tree'] == None or now - feeds[name]['last_poll'] >= feeds[name]['interval']:
                             print(f'Update content for {name}')
 
                             req = urllib.request.Request(
@@ -151,31 +149,33 @@ def on_message(client, userdata, message):
                             
                             fh = urllib.request.urlopen(req)
 
-                            feeds[name]['text']      = fh.read()
-                            feeds[name]['last_poll'] = now
-                            
-                            del req
+                            feeds[name]['tree']       = feedparser.parse(fh.read())
+                            feeds[name]['item_index'] = 0
+                            feeds[name]['last_poll']  = now
 
-                        tree = ET.ElementTree(ET.fromstring(feeds[name]['text']))
+                        n_items = len(feeds[name]['tree']['items'])
 
-                        root = tree.getroot()
+                        if n_items > 0:
+                            entry = feeds[name]
 
-                        ch = root.find('channel')
+                            nr    = entry['item_index']
+                            print(f'entry {nr} out of {n_items}')
 
-                        titles = []
+                            text  = f"Feed {name}: {entry['tree']['items'][nr]['title']} {entry['tree']['items'][nr]['link']}"
 
-                        for item in ch.findall('item'):
-                            title = item.find('title')
-                            titles.append(title.text)
+                            nr += 1
+                            if nr >= n_items:
+                                nr = 0
 
-                        txt = random.choice(titles)
+                            feeds[name]['item_index'] = nr
 
-                        del tree
+                            client.publish(response_topic, text)
 
-                        client.publish(response_topic, f'Feed {name}: {txt}')
+                        else:
+                            client.publish(response_topic, f'Feed "{name}" is empty?')
 
                     except Exception as e:
-                        client.publish(response_topic, f'Error while processing feed {name}: {e}')
+                        client.publish(response_topic, f'Error while processing feed "{name}": {e}')
 
     except Exception as e:
         print(f'Error while processing {message}: {e}')
