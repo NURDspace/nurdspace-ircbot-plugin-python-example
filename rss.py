@@ -60,111 +60,125 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=addrss|descr=Add an RSS feed: addrss <name> <url>')
 
     for feed in feeds:
-        client.publish(target_topic, f'cmd={feed}|descr=Show RSS feed {feeds[feed]}')
+        print(f'{feed} ', end='')
+        client.publish(target_topic, f'cmd={feed}|descr=Show RSS feed {feed}')
+
+    print('')
 
 def on_message(client, userdata, message):
     global prefix
     global feeds
 
-    text = message.payload.decode('utf-8')
+    try:
+        text = message.payload.decode('utf-8')
 
-    topic = message.topic[len(topic_prefix):]
+        topic = message.topic[len(topic_prefix):]
 
-    if topic == 'from/bot/command' and text == 'register':
-        announce_commands(client)
+        if topic == 'from/bot/command' and text == 'register':
+            announce_commands(client)
 
-        return
-
-    if topic == 'from/bot/parameter/prefix':
-        prefix = text
-
-        return
-
-    parts   = topic.split('/')
-    channel = parts[2] if len(parts) >= 3 else 'nurds'
-    nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
-
-    if channel in channels:
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
-
-        tokens  = text.split(' ')
-
-        if tokens[0][0] != prefix:
             return
 
-        command = tokens[0][1:]
-        print(command)
+        if topic == 'from/bot/parameter/prefix':
+            prefix = text
 
-        if command == 'addrss':
-            if len(tokens) == 3:
-                cur = con.cursor()
+            return
 
-                try:
-                    interval = 300
-                    name     = tokens[1].lower()
-                    url      = tokens[2]
+        if len(text) == 0:
+            return
 
-                    cur.execute('INSERT INTO feeds(name, url, interval) VALUES(?, ?, ?)', (name, url, interval))
+        parts   = topic.split('/')
+        channel = parts[2] if len(parts) >= 3 else 'nurds'
+        nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
-                    client.publish(response_topic, f'Feed {name} added')
+        if channel in channels:
+            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
-                    feeds[name]             = dict()
-                    feeds[name]['url']      = url
-                    feeds[name]['interval'] = interval
+            tokens  = text.split(' ')
 
-                except Exception as e:
-                    client.publish(response_topic, f'Exception: {e}')
+            if len(tokens[0]) == 0 or tokens[0][0] != prefix:
+                return
 
-                cur.close()
+            command = tokens[0][1:]
+            print(command)
 
-                con.commit()
+            if command == 'addrss':
+                if len(tokens) == 3:
+                    cur = con.cursor()
+
+                    try:
+                        interval = 300
+                        name     = tokens[1].lower()
+                        url      = tokens[2]
+
+                        cur.execute('INSERT INTO feeds(name, url, interval) VALUES(?, ?, ?)', (name, url, interval))
+
+                        client.publish(response_topic, f'Feed {name} added')
+
+                        feeds[name]             = dict()
+                        feeds[name]['url']      = url
+                        feeds[name]['interval'] = interval
+
+                    except Exception as e:
+                        client.publish(response_topic, f'Exception: {e}')
+
+                    cur.close()
+
+                    con.commit()
+
+                else:
+                    client.publish(response_topic, 'Name and/or URL missing')
 
             else:
-                client.publish(response_topic, 'Name and/or URL missing')
+                name = command.lower()
 
-        else:
-            name = command.lower()
+                if name in feeds:
+                    # TODO show latest, not random
 
-            if name in feeds:
-                # TODO show latest, not random
+                    try:
+                        now = time.time()
 
-                try:
-                    now = time.time()
+                        if feeds[name]['text'] == None or now - feeds[name]['last_poll'] >= feeds[name]['interval']:
+                            print(f'Update content for {name}')
 
-                    if feeds[name]['text'] == None or now - feeds[name]['last_poll'] >= feeds[name]['interval']:
-                        print(f'Update content for {name}')
+                            req = urllib.request.Request(
+                                    feeds[name]['url'], 
+                                    data=None, 
+                                    headers={
+                                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
+                                        }
+                                    )
+                            
+                            fh = urllib.request.urlopen(req)
 
-                        req = urllib.request.Request(
-                                feeds[name]['url'], 
-                                data=None, 
-                                headers={
-                                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
-                                    }
-                                )
-                        
-                        fh = urllib.request.urlopen(req)
+                            feeds[name]['text']      = fh.read()
+                            feeds[name]['last_poll'] = now
+                            
+                            del req
 
-                        feeds[name]['text']      = fh.read()
-                        feeds[name]['last_poll'] = now
+                        tree = ET.ElementTree(ET.fromstring(feeds[name]['text']))
 
-                    tree = ET.ElementTree(ET.fromstring(feeds[name]['text']))
+                        root = tree.getroot()
 
-                    root = tree.getroot()
+                        ch = root.find('channel')
 
-                    ch = root.find('channel')
+                        titles = []
 
-                    titles = []
+                        for item in ch.findall('item'):
+                            title = item.find('title')
+                            titles.append(title.text)
 
-                    for item in ch.findall('item'):
-                        title = item.find('title')
-                        titles.append(title.text)
+                        txt = random.choice(titles)
 
-                    txt = random.choice(titles)
+                        del tree
 
-                    client.publish(response_topic, f'Feed {name}: {txt}')
+                        client.publish(response_topic, f'Feed {name}: {txt}')
 
-                except Exception as e:
-                    client.publish(response_topic, f'Error while processing feed {name}: {e}')
+                    except Exception as e:
+                        client.publish(response_topic, f'Error while processing feed {name}: {e}')
+
+    except Exception as e:
+        print(f'Error while processing {message}: {e}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
