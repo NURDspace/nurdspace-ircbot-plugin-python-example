@@ -47,6 +47,8 @@ for row in cur.fetchall():
     feeds[row[0]]             = dict()
     feeds[row[0]]['url']      = row[1]
     feeds[row[0]]['interval'] = row[2]
+    feeds[row[0]]['last_poll'] = 0
+    feeds[row[0]]['text']     = None
 
 cur.close()
 
@@ -98,7 +100,7 @@ def on_message(client, userdata, message):
                 cur = con.cursor()
 
                 try:
-                    interval = None  # currently unused
+                    interval = 300
                     name     = tokens[1].lower()
                     url      = tokens[2]
 
@@ -126,31 +128,43 @@ def on_message(client, userdata, message):
             if name in feeds:
                 # TODO show latest, not random
 
-                req = urllib.request.Request(
-                        feeds[name]['url'], 
-                        data=None, 
-                        headers={
-                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
-                            }
-                        )
-                
-                fh = urllib.request.urlopen(req)
+                try:
+                    now = time.time()
 
-                tree = ET.parse(fh)
+                    if feeds[name]['text'] == None or now - feeds[name]['last_poll'] >= feeds[name]['interval']:
+                        print(f'Update content for {name}')
 
-                root = tree.getroot()
+                        req = urllib.request.Request(
+                                feeds[name]['url'], 
+                                data=None, 
+                                headers={
+                                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'
+                                    }
+                                )
+                        
+                        fh = urllib.request.urlopen(req)
 
-                ch = root.find('channel')
+                        feeds[name]['text']      = fh.read()
+                        feeds[name]['last_poll'] = now
 
-                titles = []
+                    tree = ET.ElementTree(ET.fromstring(feeds[name]['text']))
 
-                for item in ch.findall('item'):
-                    title = item.find('title')
-                    titles.append(title.text)
+                    root = tree.getroot()
 
-                txt = random.choice(titles)
+                    ch = root.find('channel')
 
-                client.publish(response_topic, f'Feed {name}: {txt}')
+                    titles = []
+
+                    for item in ch.findall('item'):
+                        title = item.find('title')
+                        titles.append(title.text)
+
+                    txt = random.choice(titles)
+
+                    client.publish(response_topic, f'Feed {name}: {txt}')
+
+                except Exception as e:
+                    client.publish(response_topic, f'Error while processing feed {name}: {e}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
