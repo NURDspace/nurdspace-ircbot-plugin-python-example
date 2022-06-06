@@ -64,10 +64,10 @@ def on_message(client, userdata, message):
             query = server.query()
 
             if len(query.players.names) > 0:
-                client.publish(response_topic, f'The server at {mc_server} has the following players online: {", ".join(query.players.names)} and responds in {latency}ms.')
+                client.publish(response_topic, f'The server at {mc_server}/space.nurdspace.nl has the following players online: {", ".join(query.players.names)} and responds in {latency}ms.')
 
             else:
-                client.publish(response_topic, f'The server at {mc_server} has no players on-line currently and responds in {latency}ms.')
+                client.publish(response_topic, f'The server at {mc_server}/space.nurdspace.nl has no players on-line currently and responds in {latency}ms.')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
