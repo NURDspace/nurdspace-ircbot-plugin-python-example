@@ -23,7 +23,9 @@ con = sqlite3.connect(db_file)
 
 cur = con.cursor()
 try:
-    cur.execute('CREATE TABLE at(channel TEXT NOT NULL, `when` DATETIME NOT NULL, what TEXT NOT NULL, PRIMARY KEY(channel, `when`))')
+    cur.execute('CREATE TABLE at(channel TEXT NOT NULL, `when` DATETIME NOT NULL, what TEXT NOT NULL)')
+
+    cur.execute('CREATE INDEX at_when ON at(`when`)')
 
 except sqlite3.OperationalError as oe:
     # should be "table already exists"
