@@ -95,6 +95,8 @@ def on_message(client, userdata, message):
 
             current_song = mpd_client.currentsong()
 
+            status = mpd_client.status()
+
             playing = gen_song_name(current_song)
 
             if command == 'next':
@@ -108,9 +110,14 @@ def on_message(client, userdata, message):
                 client.publish(response_topic, f'Went back to the previous song')
 
             elif command == 'np':
-                print(current_song)
+                duration = float(status['duration'])
+                elapsed  = float(status['elapsed'])
 
-                client.publish(response_topic, f'Now playing: {playing}')
+                finished_percentage = elapsed * 100 / duration
+
+                time_left = duration - elapsed
+
+                client.publish(response_topic, f'Now playing: {playing} ({100 - finished_percentage:.2f}% left or {time_left:.2f} seconds)')
 
             mpd_client.close()
 
