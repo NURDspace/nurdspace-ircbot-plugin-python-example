@@ -61,6 +61,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=addrss|descr=Add an RSS feed: addrss <name> <url>')
+    client.publish(target_topic, 'cmd=listrss|descr=List RSS feeds')
 
     for feed in feeds:
         client.publish(target_topic, f'cmd={feed}|descr=Show RSS feed {feed}')
@@ -115,9 +116,11 @@ def on_message(client, userdata, message):
 
                         client.publish(response_topic, f'Feed {name} added')
 
-                        feeds[name]             = dict()
-                        feeds[name]['url']      = url
-                        feeds[name]['interval'] = interval
+                        feeds[name]              = dict()
+                        feeds[name]['url']       = url
+                        feeds[name]['interval']  = interval
+                        feeds[name]['tree']      = None
+                        feeds[name]['last_poll'] = 0
 
                     except Exception as e:
                         client.publish(response_topic, f'Exception: {e}')
@@ -128,6 +131,11 @@ def on_message(client, userdata, message):
 
                 else:
                     client.publish(response_topic, 'Name and/or URL missing')
+
+            elif command == 'listrss':
+                feed_list = [feed for feed in feeds]
+
+                client.publish(response_topic, f'Available RSS feeds: {", ".join(feed_list)}')
 
             else:
                 name = command.lower()
@@ -153,7 +161,7 @@ def on_message(client, userdata, message):
                             feeds[name]['item_index'] = 0
                             feeds[name]['last_poll']  = now
 
-                        n_items = len(feeds[name]['tree']['items'])
+                        n_items = len(feeds[name]['tree']['items']) if 'items' in feeds[name]['tree'] else 0
 
                         if n_items > 0:
                             entry = feeds[name]
@@ -172,7 +180,7 @@ def on_message(client, userdata, message):
                             client.publish(response_topic, text)
 
                         else:
-                            client.publish(response_topic, f'Feed "{name}" is empty?')
+                            client.publish(response_topic, f'Feed "{name}" is empty? ({feeds[name]["url"]})')
 
                     except Exception as e:
                         client.publish(response_topic, f'Error while processing feed "{name}": {e}')
