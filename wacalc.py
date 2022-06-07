@@ -64,37 +64,41 @@ def on_message(client, userdata, message):
 
         if command == 'wacalc':
             if len(tokens) >= 2:
-                query = ' '.join(tokens[1:])
+                try:
+                    query = ' '.join(tokens[1:])
 
-                appid = random.choice(appids)
+                    appid = random.choice(appids)
 
-                interpretation = ''
-                response       = ''
+                    interpretation = ''
+                    response       = ''
 
-                expr = urllib.parse.quote(query)
+                    expr = urllib.parse.quote(query)
 
-                r    = requests.get(f'http://api.wolframalpha.com/v2/query?appid={appid}&input={expr}')
-                data = r.content.decode('utf8')
+                    r    = requests.get(f'http://api.wolframalpha.com/v2/query?appid={appid}&input={expr}')
+                    data = r.content.decode('utf8')
 
-                if data == '':
-                    client.publish(response_topic, 'WA returned nothing')
+                    if data == '':
+                        client.publish(response_topic, 'WA returned nothing')
 
-                dom = xmd.parseString(data)
+                    dom = xmd.parseString(data)
 
-                result         = dom.getElementsByTagName('queryresult').item(0)
-                ipod           = result.getElementsByTagName('pod').item(0)
-                rpod           = result.getElementsByTagName('pod').item(1)
-                isubpod        = ipod.getElementsByTagName('subpod').item(0)
-                rsubpod        = rpod.getElementsByTagName('subpod').item(0)
-                interelement   = isubpod.getElementsByTagName('plaintext').item(0)
-                resultelement  = rsubpod.getElementsByTagName('plaintext').item(0)
+                    result         = dom.getElementsByTagName('queryresult').item(0)
+                    ipod           = result.getElementsByTagName('pod').item(0)
+                    rpod           = result.getElementsByTagName('pod').item(1)
+                    isubpod        = ipod.getElementsByTagName('subpod').item(0)
+                    rsubpod        = rpod.getElementsByTagName('subpod').item(0)
+                    interelement   = isubpod.getElementsByTagName('plaintext').item(0)
+                    resultelement  = rsubpod.getElementsByTagName('plaintext').item(0)
 
-                interpretation = f'www.wolframalpha.com interpreted this as: {interelement.firstChild.data}'
+                    interpretation = f'www.wolframalpha.com interpreted this as: {interelement.firstChild.data}'
 
-                response       = rpod.getAttribute('title') + ': ' + resultelement.firstChild.data
+                    response       = rpod.getAttribute('title') + ': ' + resultelement.firstChild.data
 
-                client.publish(response_topic, interpretation)
-                client.publish(response_topic, response)
+                    client.publish(response_topic, interpretation)
+                    client.publish(response_topic, response)
+
+                except Exception as e:
+                    client.publish(response_topic, 'Stephen got confused ({e})')
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters for wacalc')
