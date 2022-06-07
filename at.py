@@ -44,6 +44,11 @@ def announce_commands(client):
 
     client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD/MM/YYYY" or "HH:MM:SS" or those two combined)')
 
+def sleeper(dt, response_topic, txt):
+    time.sleep(dt)
+
+    client.publish(response_topic, txt)
+
 def on_message(client, userdata, message):
     global prefix
 
@@ -116,7 +121,15 @@ def on_message(client, userdata, message):
             try:
                 cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
 
-                client.publish(response_topic, 'Reminder stored')
+                reminder_str = f'Reminder ({date_string} {time_string}): {what}'
+
+                client.publish(response_topic, f'Reminder stored for {date_string} {time_string}')
+
+                sleep_t      = event_time - t_now
+
+                t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
+                t.daemon = True
+                t.start()
 
             except Exception as e:
                 client.publish(response_topic, f'Failed to remember reminder: {e}')
@@ -124,50 +137,37 @@ def on_message(client, userdata, message):
             cur.close()
             con.commit()
 
-def reminder_thread(client, con):
+def start_reminder_threads(con):
     global db_file
 
-    while True:
-        try:
-            con = sqlite3.connect(db_file)
+    con = sqlite3.connect(db_file)
 
-            q   = 'SELECT channel, `when` AS "datetime [timestamp]", what, datetime("now", "localtime") FROM at WHERE `when` > datetime("now", "localtime") ORDER BY `when` ASC LIMIT 1'
+    cur = con.cursor()
+    cur.execute('SELECT channel, `when` AS "datetime [timestamp]", what, datetime("now", "localtime") FROM at WHERE `when` > datetime("now", "localtime") ORDER BY `when` ASC LIMIT 1')
+    rows = cur.fetchall()
+    cur.close()
 
-            cur = con.cursor()
-            cur.execute(q)
+    for row in rows:
+        channel    = row[0]
 
-            row = cur.fetchone()
+        next_event = netherlands_tz.localize(datetime.datetime.strptime(row[1], '%Y-%m-%d %H:%M:%S')).timestamp()
 
-            cur.close()
+        now        = time.time()
 
-            if row == None:
-                # TODO wait for condition variable triggered when someone adds a new item
-                time.sleep(2.5)
+        sleep_t    = next_event - now
 
-            else:
-                channel    = row[0]
+        if sleep_t >= 0:
+            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
-                next_event = netherlands_tz.localize(datetime.datetime.strptime(row[1], '%Y-%m-%d %H:%M:%S')).timestamp()
+            ts_str         = row[1]
 
-                now        = time.time()
+            reminder_str   = f'Reminder ({ts_str}): {row[2]}'
 
-                sleep_t    = next_event - now
+            t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
+            t.daemon = True
+            t.start()
 
-                if sleep_t > 0:
-                    time.sleep(sleep_t)
-
-                    print(row[1], row[3], now, next_event, sleep_t)
-
-                    response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
-
-                    ts_str     = row[1]
-
-                    client.publish(response_topic, f'Reminder ({ts_str}): {row[2]}')
-
-        except Exception as e:
-            print(f'Reminder thread: {e}')
-
-            time.sleep(1.0)
+    con.close()
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -193,7 +193,6 @@ client.on_connect = on_connect
 t1 = threading.Thread(target=announce_thread, args=(client,))
 t1.start()
 
-t2 = threading.Thread(target=reminder_thread, args=(client, con))
-t2.start()
+start_reminder_threads(con)
 
 client.loop_forever()
