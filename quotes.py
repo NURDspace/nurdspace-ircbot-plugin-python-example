@@ -189,7 +189,7 @@ def on_message(client, userdata, message):
                 try:
                     query = ' '.join(tokens[1:])
 
-                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE channel=? AND quote like ? ORDER BY RANDOM()', (channel, f'%{query}%'))
+                    cur.execute('SELECT quote, about_whom, nr FROM quotes WHERE channel=? AND (quote like ? OR about_whom like ?) ORDER BY RANDOM()', (channel, f'%{query}%', f'%{query}%'))
 
                     output = None
 
