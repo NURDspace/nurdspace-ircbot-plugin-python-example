@@ -98,7 +98,7 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, response)
 
                 except Exception as e:
-                    client.publish(response_topic, 'Stephen got confused ({e})')
+                    client.publish(response_topic, f'Stephen got confused ({e})')
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters for wacalc')
