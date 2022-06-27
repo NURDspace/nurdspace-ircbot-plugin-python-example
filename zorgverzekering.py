@@ -4,6 +4,7 @@
 
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 
+import math
 import paho.mqtt.client as mqtt
 import random
 import requests
@@ -33,6 +34,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=allot|descr=Show allotments for a given day')
     client.publish(target_topic, 'cmd=rijnstreek|descr=Rijnstreek FM currently playing')
     client.publish(target_topic, 'cmd=janee|descr=Voor levensvragen')
+    client.publish(target_topic, 'cmd=regen|descr=Regenvoorspelling voor omgeving Wageningen')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -132,6 +134,43 @@ def cmd_rijnstreek(client, response_topic):
 def cmd_janee(client, response_topic):
     client.publish(response_topic, random.choice(['ja', 'nee', 'ja', 'nein']))
 
+def cmd_regen(client, response_topic):
+    try:
+        r = requests.get('https://gpsgadget.buienradar.nl/data/raintext/?lat=51.97&lon=5.67')
+        data = r.content.decode('ascii')
+
+        client.publish(response_topic, r.content.decode('ascii'))
+
+        result = []
+
+        lines = data.split('\n')
+
+        for line in lines:
+            if line == '':
+                continue
+
+            try:
+               line = line.rstrip('\r')
+               parts = line.split('|')
+               mmtemp = float(str(parts[0]))
+               mm = math.pow(10.0, ((mmtemp - 109)/32.0))
+
+               if mm >= 0.001:
+                   result.append('%s: %.3fmm/u, ' % (parts[1], mm))
+
+            except Exception as e:
+                client.publish(response_topic, f'Exception during "regen": {e}, line number: {e.__traceback__.tb_lineno}')
+                break
+
+        if len(result) == 0:
+            client.publish(response_topic, f'Geen regen voorspeld door buienradar.nl')
+
+        else:
+            client.publish(response_topic, f'Regenvoorspelling van buienradar.nl: {" ".join(result)}')
+
+    except:
+        client.publish(response_topic, f'Exception during "regen": {e}, line number: {e.__traceback__.tb_lineno}')
+
 def on_message(client, userdata, message):
     global choices
     global prefix
@@ -210,6 +249,9 @@ def on_message(client, userdata, message):
 
         elif command == 'janee':
             cmd_janee(client, response_topic)
+
+        elif command == 'regen':
+            cmd_regen(client, response_topic)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
