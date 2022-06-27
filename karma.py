@@ -26,6 +26,8 @@ def announce_commands(client):
 
     client.publish(target_topic, 'cmd=karma|descr=Show karma of a word/entity.')
     client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
+    client.publish(target_topic, 'cmd=topkarma|descr=Show highest valued word/entity.')
+    client.publish(target_topic, 'cmd=toprkarma|descr=Top karma givers.')
 
 def on_message(client, userdata, message):
     global prefix
@@ -54,13 +56,16 @@ def on_message(client, userdata, message):
         if text[0] == prefix:
             tokens  = text.split(' ')
 
-            if len(tokens) != 2:
-                return
-
             command = tokens[0][1:]
-            word    = tokens[1]
+
+            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
             if command == 'karma':
+                if len(tokens) != 2:
+                    return
+
+                word = tokens[1]
+
                 query = 'SELECT count FROM karma WHERE channel=? AND word=?'
 
                 cur = con.cursor()
@@ -71,10 +76,71 @@ def on_message(client, userdata, message):
                     row = cur.fetchone()
 
                     if row == None:
-                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'"{word}" has no karma (yet)')
+                        client.publish(response_topic, f'"{word}" has no karma (yet)')
 
                     else:
-                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'Karma of "{word}" is {row[0]}')
+                        client.publish(response_topic, f'Karma of "{word}" is {row[0]}')
+
+                except Exception as e:
+                    print(f'Exception: {e}')
+
+                cur.close()
+
+            elif command == 'topkarma':
+                cur = con.cursor()
+
+                try:
+                    cur.execute('SELECT word, count FROM karma WHERE channel=? ORDER BY count DESC LIMIT 5', (channel.lower(),))
+
+                    words = None
+
+                    for row in cur:
+                        if words == None:
+                            words = ''
+
+                        else:
+                            words += ', '
+
+                        words += f'{row[0]} ({row[1]})'
+
+                    if words == None:
+                        client.publish(response_topic, 'No karmas')
+
+                    else:
+                        client.publish(response_topic, f'Most valued word(s) is/(are): {words}')
+
+                except Exception as e:
+                    print(f'Exception: {e}')
+
+                cur.close()
+
+            elif command == 'toprkarma':
+                cur = con.cursor()
+
+                try:
+                    cur.execute('SELECT who, SUM(count) AS count, COUNT(*) AS n FROM rkarma WHERE channel=? GROUP BY who ORDER BY n DESC LIMIT 5', (channel.lower(),))
+
+                    words = None
+
+                    for row in cur:
+                        if words == None:
+                            words = ''
+
+                        else:
+                            words += ', '
+
+                        person = row[0]
+
+                        if '!' in person:
+                            person = person[0:person.find('!')]
+
+                        words += f'{person} ({row[1]} for {row[2]} words)'
+
+                    if words == None:
+                        client.publish(response_topic, 'No karmas')
+
+                    else:
+                        client.publish(response_topic, f'Top karma givers: {words}')
 
                 except Exception as e:
                     print(f'Exception: {e}')
