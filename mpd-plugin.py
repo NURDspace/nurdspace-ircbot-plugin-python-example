@@ -117,7 +117,9 @@ def on_message(client, userdata, message):
 
                 time_left = duration - elapsed
 
-                client.publish(response_topic, f'Now playing: {playing} ({100 - finished_percentage:.2f}% left or {time_left:.2f} seconds)')
+                light_meters = 299792458 * time_left
+
+                client.publish(response_topic, f'Now playing: {playing} ({100 - finished_percentage:.2f}% left or {time_left:.2f} seconds or the time that light moves {light_meters / 1000:.2f} meters)')
 
             mpd_client.close()
 
