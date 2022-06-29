@@ -182,7 +182,35 @@ def on_message(client, userdata, message):
         else:
             karmas = None
 
+            words = [ ]
+            concat = None
+
             for word in text.split(' '):
+                if concat != None:
+
+                    if ')' in word:
+                        concat += ' ' + word.replace(')', '')
+
+                        words.append(concat)
+
+                        concat = None
+
+                    else:
+                        concat += ' ' + word
+
+                    continue
+
+                if word[0] == '(':
+                    concat = word[1:]
+
+                    continue
+
+                if '+' in word or '-' in word:
+                    words.append(word)
+
+                    continue
+
+            for word in words:
                 count = 0
 
                 add = 0
