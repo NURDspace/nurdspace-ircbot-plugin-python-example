@@ -180,6 +180,8 @@ def on_message(client, userdata, message):
                 cur.close()
 
         else:
+            karmas = None
+
             for word in text.split(' '):
                 count = 0
 
@@ -219,6 +221,17 @@ def on_message(client, userdata, message):
 
                         cur.execute('COMMIT')
 
+                        cur.execute('SELECT count FROM karma WHERE channel=? AND word=?', (channel.lower(), word.lower()))
+                        result = cur.fetchone()
+
+                        if karmas == None:
+                            karmas = ''
+
+                        else:
+                            karmas += ', '
+
+                        karmas += f'{word}: {result[0]}'
+
                         cur.close()
 
                     except sqlite3.OperationalError as oe:
@@ -239,6 +252,9 @@ def on_message(client, userdata, message):
 
                         except Exception as e:
                             print(f'Unexpected exception {e} while handling exception {oe}')
+
+            if karmas != None:
+                client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', karmas)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
