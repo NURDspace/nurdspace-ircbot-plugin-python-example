@@ -36,6 +36,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=learn|descr=Store a fact about something')
+    client.publish(target_topic, 'cmd=dellearn|descr=Forget a fact')
 
 def on_message(client, userdata, message):
     global prefix
@@ -91,22 +92,47 @@ def on_message(client, userdata, message):
             else:
                 client.publish(response_topic, 'Nick or fact missing. Also the word "is" should be there.')
 
+        elif command == 'dellearn' and tokens[0][0] == prefix:
+            if len(tokens) == 2:
+                cur = con.cursor()
+
+                try:
+                    nr = tokens[1]
+
+                    cur.execute('DELETE FROM learn WHERE channel=? AND nr=?', (channel, nr))
+
+                    client.publish(response_topic, f'Fact {nr} deleted')
+
+                except Exception as e:
+                    client.publish(response_topic, f'Exception: {e}')
+
+                cur.close()
+
+                con.commit()
+
+            else:
+                client.publish(response_topic, 'Invalid number of parameters: parameter should be the fact-number')
+
         elif len(command) > 1 and command[-1] == '?':
             cur = con.cursor()
 
             try:
+                verbose = True if len(tokens) == 2 and tokens[1] == '-v' else False
+
                 word = tokens[0][0:-1]
 
-                cur.execute('SELECT DISTINCT value FROM learn WHERE channel=? AND key=? ORDER BY value', (channel, word.lower()))
+                cur.execute('SELECT value, nr FROM learn WHERE channel=? AND key=? ORDER BY value', (channel, word.lower()))
 
                 facts = None
 
                 for row in cur.fetchall():
+                    item = f'{row[0]} ({row[1]})' if verbose else row[0]
+
                     if facts == None:
-                        facts = row[0]
+                        facts = item
 
                     else:
-                        facts += ' / ' + row[0]
+                        facts += ' / ' + item
 
                 if facts != None:
                     client.publish(response_topic, f'{word} is: {facts}')
