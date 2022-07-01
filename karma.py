@@ -153,6 +153,8 @@ def on_message(client, userdata, message):
                 cur = con.cursor()
 
                 try:
+                    word = tokens[1]
+
                     cur.execute(query, (channel.lower(), word.lower()))
 
                     output = ''
@@ -186,6 +188,9 @@ def on_message(client, userdata, message):
             concat = None
 
             for word in text.split(' '):
+                if word == '':  # ?!?!
+                    continue
+
                 if concat != None:
 
                     if ')' in word:
