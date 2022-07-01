@@ -69,7 +69,12 @@ def on_message(client, userdata, message):
     try:
         now = int(time.time())
 
-        cur.execute("INSERT INTO seen(channel, who, ts, quote) VALUES(?, ?, strftime('%Y-%m-%d %H:%M:%S','now'), ?) ON CONFLICT(channel, who) DO UPDATE SET ts=strftime('%Y-%m-%d %H:%M:%S','now'), quote=?", (channel, nick.lower(), text, text))
+        mod_nick = nick
+
+        if '!' in mod_nick:
+            mod_nick = mod_nick[0:mod_nick.find('!')]
+
+        cur.execute("INSERT INTO seen(channel, who, ts, quote) VALUES(?, ?, strftime('%Y-%m-%d %H:%M:%S','now'), ?) ON CONFLICT(channel, who) DO UPDATE SET ts=strftime('%Y-%m-%d %H:%M:%S','now'), quote=?", (channel, mod_nick.lower(), text, text))
 
     except Exception as e:
         print(e)
@@ -94,7 +99,7 @@ def on_message(client, userdata, message):
             try:
                 word = tokens[0][0:-1]
 
-                cur.execute('SELECT ts AS "[timestamp]", quote FROM seen WHERE channel=? AND who LIKE ?', (channel, nick + '!%'))
+                cur.execute('SELECT ts AS "[timestamp]", quote FROM seen WHERE channel=? AND who=?', (channel, nick))
 
                 row = cur.fetchone()
 
