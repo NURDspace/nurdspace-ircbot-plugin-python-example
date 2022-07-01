@@ -15,7 +15,7 @@ import urllib.parse
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'nurds', 'test', 'nurdsbofh']
+channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
 prefix       = '!'
 
 choices      = []
@@ -124,7 +124,7 @@ def cmd_allot(client, response_topic, value):
 
 def cmd_rijnstreek(client, response_topic):
     try:
-        r = requests.get('https://bit.rtvrijnstreek.nl/web.html')
+        r = requests.get('https://bit.rtvrijnstreek.nl/web.html', timeout=10)
 
         client.publish(response_topic, r.content.decode('utf-8').splitlines()[0])
 
@@ -136,7 +136,7 @@ def cmd_janee(client, response_topic):
 
 def cmd_regen(client, response_topic):
     try:
-        r = requests.get('https://gpsgadget.buienradar.nl/data/raintext/?lat=51.97&lon=5.67')
+        r = requests.get('https://gpsgadget.buienradar.nl/data/raintext/?lat=51.97&lon=5.67', timeout=10)
         data = r.content.decode('ascii')
 
         client.publish(response_topic, r.content.decode('ascii'))
@@ -192,24 +192,27 @@ def on_message(client, userdata, message):
     if len(text) == 0:
         return
 
-    if text[0] != prefix:
-        return
-
     parts   = topic.split('/')
     channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
+
+    response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+
+    if 'blutengel' in text.lower():
+        client.publish(response_topic, "Gaat het over blutengel? Man, dat is zooooo'n top-band!")
+
+    if text[0] != prefix:
+        return
 
     parts     = text.split(' ')
     command   = parts[0][1:]
     value     = parts[1]  if len(parts) >= 2 else None
     value_all = parts[1:] if len(parts) >= 2 else None
 
-    print(channel, nick, command, value)
+    # print(channel, nick, command, value)
 
     if channel in channels:
         command = text[1:].split(' ')[0]
-
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         if command == 'zorgverzekering':
             client.publish(response_topic, 'Het beste neem je een zorgverzekering die je ziektekosten afdekt.')
