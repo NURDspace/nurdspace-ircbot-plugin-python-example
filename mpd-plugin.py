@@ -25,6 +25,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=pause|descr=Stops the music, or unstops it.')
     client.publish(target_topic, 'cmd=prev|descr=Skip to the previous track.')
     client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
+    client.publish(target_topic, 'cmd=clearpl|descr=Clear the current playlist.')
 
 def gen_song_name(song_meta):
     playing = ''
@@ -87,7 +88,7 @@ def on_message(client, userdata, message):
 
     command = text[1:].split(' ')[0]
 
-    if channel in channels and command in ['next', 'np', 'prev', 'pause']:
+    if channel in channels and command in ['next', 'np', 'prev', 'pause', 'clearpl']:
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         try:
@@ -114,6 +115,12 @@ def on_message(client, userdata, message):
                 mpd_client.pause()
 
                 client.publish(response_topic, f'The music is paused or unpaused')
+
+            elif command == 'clearpl':
+                mpd_client.clear()
+                mpd_client.pause(1)
+
+                client.publish(response_topic, f'The playlist has been cleared (and paused)')
 
             elif command == 'np':
                 duration = float(status['duration'])
