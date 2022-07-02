@@ -22,6 +22,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=next|descr=Skip to the next track.')
+    client.publish(target_topic, 'cmd=pause|descr=Stops the music, or unstops it.')
     client.publish(target_topic, 'cmd=prev|descr=Skip to the previous track.')
     client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
 
@@ -86,7 +87,7 @@ def on_message(client, userdata, message):
 
     command = text[1:].split(' ')[0]
 
-    if channel in channels and command in ['next', 'np', 'prev']:
+    if channel in channels and command in ['next', 'np', 'prev', 'pause']:
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         try:
@@ -108,6 +109,11 @@ def on_message(client, userdata, message):
                 mpd_client.previous()
 
                 client.publish(response_topic, f'Went back to the previous song')
+
+            elif command == 'pause':
+                mpd_client.pause()
+
+                client.publish(response_topic, f'The music is paused or unpaused')
 
             elif command == 'np':
                 duration = float(status['duration'])
