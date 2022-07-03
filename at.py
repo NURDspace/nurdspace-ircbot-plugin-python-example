@@ -78,64 +78,70 @@ def on_message(client, userdata, message):
         command = tokens[0][1:]
 
         if command == 'at' and tokens[0][0] == prefix and len(tokens) >= 3:
-            dt_now = datetime.datetime.now()
+            try:
+                dt_now = datetime.datetime.now()
 
-            time_offset = 1
-            text_offset = 2
-
-            date_string = None
-            time_string = '12:00:00'
-
-            if '-' in tokens[1] or '/' in tokens[1]:
-                time_offset = 2
-                text_offset = 3
-
-                date_string = tokens[1]
-
-                if '-' in date_string:
-                    date_string = date_string.replace('-', '/')
-
-            if ':' in tokens[time_offset]:
-                time_string = tokens[time_offset]
-
-                if len(time_string) == 5:
-                    time_string += ':00'
-
-            else:
+                time_offset = 1
                 text_offset = 2
 
-            what = ' '.join(tokens[text_offset:])
+                date_string = None
+                time_string = '12:00:00'
 
-            if date_string == None:
-                date_string = dt_now.strftime('%d/%m/%Y')
+                if '-' in tokens[1] or '/' in tokens[1]:
+                    time_offset = 2
+                    text_offset = 3
 
-            event_time     = netherlands_tz.localize(datetime.datetime.strptime(date_string + " " + time_string, '%d/%m/%Y %H:%M:%S')).timestamp()
+                    date_string = tokens[1]
 
-            t_now = time.time()
+                    if '-' in date_string:
+                        date_string = date_string.replace('-', '/')
 
-            if event_time < t_now:
-                event_time += 86400
+                if ':' in tokens[time_offset]:
+                    time_string = tokens[time_offset]
 
-            cur = con.cursor()
+                    if len(time_string) == 5:
+                        time_string += ':00'
 
-            try:
-                cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
+                else:
+                    text_offset = 2
 
-                reminder_str = f'Reminder ({date_string} {time_string}): {what}'
+                what = ' '.join(tokens[text_offset:]) + f' ({nick})'
 
-                client.publish(response_topic, f'Reminder stored for {date_string} {time_string}')
+                if date_string == None:
+                    date_string = dt_now.strftime('%d/%m/%Y')
 
-                sleep_t      = event_time - t_now
+                event_time     = netherlands_tz.localize(datetime.datetime.strptime(date_string + " " + time_string, '%d/%m/%Y %H:%M:%S')).timestamp()
 
-                t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
-                t.daemon = True
-                t.start()
+                t_now = time.time()
+
+                if event_time < t_now:
+                    event_time += 86400
+
+                    date_string = 'tomorrow'
+
+                cur = con.cursor()
+
+                try:
+                    cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
+
+                    reminder_str = f'Reminder ({date_string} {time_string}): {what}'
+
+                    client.publish(response_topic, f'Reminder stored for {date_string} {time_string}')
+
+                    sleep_t      = event_time - t_now
+
+                    t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
+                    t.daemon = True
+                    t.start()
+
+                except Exception as e:
+                    client.publish(response_topic, f'Failed to remember reminder: {e}')
+
+                cur.close()
+                con.commit()
 
             except Exception as e:
                 client.publish(response_topic, f'Failed to remember reminder: {e}')
-
-            cur.close()
-            con.commit()
 
 def start_reminder_threads(con):
     global db_file
