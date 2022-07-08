@@ -165,8 +165,8 @@ def cmd_at(client, response_topic):
 
             title = text[title_start + 7:title_end]
 
-            if len(title) > 32:
-                title = title[0:30] + '<...>'
+            if len(title) > 64:
+                title = title[0:61] + '<...>'
 
             if len(url) > 32:
                 url = url[0:30] + '<...>'
