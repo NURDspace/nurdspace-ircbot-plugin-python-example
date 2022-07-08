@@ -7,6 +7,7 @@
 import math
 import paho.mqtt.client as mqtt
 import random
+import re
 import requests
 import threading
 import time
@@ -19,7 +20,15 @@ channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
 prefix       = '!'
 
 choices      = []
+last_urls    = []
 
+
+def find_urls(string):
+    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?]))"
+
+    url = re.findall(regex,string)      
+
+    return [x[0] for x in url]
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -35,6 +44,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=rijnstreek|descr=Rijnstreek FM currently playing')
     client.publish(target_topic, 'cmd=janee|descr=Voor levensvragen')
     client.publish(target_topic, 'cmd=regen|descr=Regenvoorspelling voor omgeving Wageningen')
+    client.publish(target_topic, 'cmd=@|descr=What is the titel of the last URL posted')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -134,6 +144,40 @@ def cmd_rijnstreek(client, response_topic):
 def cmd_janee(client, response_topic):
     client.publish(response_topic, random.choice(['ja', 'nee', 'ja', 'nein']))
 
+def cmd_at(client, response_topic):
+    urls = []
+
+    for url in last_urls:
+        try:
+            r = requests.get(url, timeout=10)
+
+            text = r.content.decode('utf-8').lower()
+        
+            title_start = text.find('<title>')
+
+            if title_start == -1:
+                continue
+
+            title_end = text.find('</title>', title_start)
+
+            if title_end == -1:
+                continue
+
+            title = text[title_start + 7:title_end]
+
+            if len(title) > 32:
+                title = title[0:30] + '<...>'
+
+            if len(url) > 32:
+                url = url[0:30] + '<...>'
+
+            urls.append(f'{url}: {title}')
+
+        except Exception as e:
+            print(f'{url} failed: {e}')
+
+    client.publish(response_topic, ', '.join(urls))
+
 def cmd_regen(client, response_topic):
     try:
         r = requests.get('https://gpsgadget.buienradar.nl/data/raintext/?lat=51.97&lon=5.67', timeout=10)
@@ -173,6 +217,7 @@ def cmd_regen(client, response_topic):
 
 def on_message(client, userdata, message):
     global choices
+    global last_urls
     global prefix
 
     text = message.payload.decode('utf-8')
@@ -192,13 +237,24 @@ def on_message(client, userdata, message):
     if len(text) == 0:
         return
 
+    try:
+        new_last_urls = find_urls(text)
+
+        if len(new_last_urls) > 0:
+            last_urls = new_last_urls
+
+    except Exception as e:
+        print(f'fail: {e} for {text}')
+
     parts   = topic.split('/')
     channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
-    if 'blutengel' in text.lower():
+    lower_text = text.lower()
+
+    if 'blutengel' in lower_text:
         client.publish(response_topic, "Gaat het over blutengel? Man, dat is zooooo'n top-band!")
 
     if text[0] != prefix:
@@ -255,6 +311,9 @@ def on_message(client, userdata, message):
 
         elif command == 'regen':
             cmd_regen(client, response_topic)
+
+        elif command == '@':
+            cmd_at(client, response_topic)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
