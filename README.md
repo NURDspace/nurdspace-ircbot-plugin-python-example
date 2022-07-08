@@ -1,5 +1,4 @@
-see https://github.com/r3boot/jaken
-or https://github.com/folkertvanheusden/GHBot
+See https://nurdspace.nl/GHBot for more details
 
 # wacalc
 
@@ -11,3 +10,8 @@ appids = [
         ]
 
 Add as many as you like.
+
+
+# template.py
+
+Example code
