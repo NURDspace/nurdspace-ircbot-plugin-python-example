@@ -114,7 +114,7 @@ def on_message(client, userdata, message):
             elif command == 'pause':
                 mpd_client.pause()
 
-                client.publish(response_topic, f'The music is paused or unpaused')
+                client.publish(response_topic, f'The music is paused or unpaused: {status["state"]}')
 
             elif command == 'clearpl':
                 mpd_client.clear()
