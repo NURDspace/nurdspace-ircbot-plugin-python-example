@@ -206,7 +206,13 @@ def on_message(client, userdata, message):
                     continue
 
                 if word[0] == '(':
-                    concat = word[1:]
+                    if ')' in word:
+                        words.append(word[1:].replace(')', ''))
+
+                        concat = None
+
+                    else:
+                        concat = word[1:]
 
                     continue
 
@@ -214,6 +220,7 @@ def on_message(client, userdata, message):
                     words.append(word)
 
                     continue
+
 
             for word in words:
                 count = 0
