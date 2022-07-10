@@ -4,6 +4,7 @@
 
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 
+import json
 import paho.mqtt.client as mqtt
 import threading
 import time
@@ -33,6 +34,23 @@ def on_message(client, userdata, message):
             announce_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
             client.publish(announce_topic, '*** DOORBELL ***')
+
+        return
+
+    # space/door/front {"name":"tahtkev","date":"zondag 10 juli 2022","time":"15:29:36","msg":"Toegang verleend - met kaart","cardnr":666}
+    if message.topic == 'space/door/front':
+        try:
+            j = json.loads(text)
+
+            msg = f'--- {j["name"]} opened the door ---'
+
+            for channel in channels:
+                announce_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+
+                client.publish(announce_topic, msg)
+
+        except Exception as e:
+            print(f'Failed to announce entry: {e}, line number: {e.__traceback__.tb_lineno}')
 
         return
 
@@ -77,6 +95,8 @@ def on_connect(client, userdata, flags, rc):
         client.subscribe(f'{topic_prefix}from/bot/command')
 
         client.subscribe(f'deurbel')
+
+        client.subscribe(f'space/door/front')
 
 def announce_thread(client):
     while True:
