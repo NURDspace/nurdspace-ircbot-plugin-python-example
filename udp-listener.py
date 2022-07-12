@@ -12,7 +12,6 @@ import time
 mqtt_server  = 'mqtt.vm.nurd.space'   # TODO: hostname of MQTT server
 topic_prefix = 'GHBot/'  # leave this as is
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']  # TODO: channels to respond to
-prefix       = '!'  # !command, will be updated by ghbot
 
 def listener(client):
     try:
