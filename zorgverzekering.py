@@ -237,25 +237,27 @@ def on_message(client, userdata, message):
     if len(text) == 0:
         return
 
-    try:
-        new_last_urls = find_urls(text)
-
-        if len(new_last_urls) > 0:
-            last_urls = new_last_urls
-
-    except Exception as e:
-        print(f'fail: {e} for {text}')
-
     parts   = topic.split('/')
     channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
-    response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+    try:
+        if len(parts) > 0 and parts[-1] == 'message':
+            new_last_urls = find_urls(text)
+            print(new_last_urls)
+
+            if len(new_last_urls) > 0:
+                last_urls = new_last_urls
+
+    except Exception as e:
+        print(f'fail: {e} for {text}')
+
+    response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
     lower_text = text.lower()
 
-    if 'blutengel' in lower_text:
-        client.publish(response_topic, "Gaat het over blutengel? Man, dat is zooooo'n top-band!")
+    if 'rammstein' in lower_text:
+        client.publish(response_topic, 'BUCK DICH')
 
     if text[0] != prefix:
         return
