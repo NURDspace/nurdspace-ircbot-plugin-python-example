@@ -58,7 +58,7 @@ def on_message(client, userdata, message):
 
             command = tokens[0][1:]
 
-            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+            response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
             if command == 'karma':
                 if len(tokens) != 2:
@@ -171,10 +171,10 @@ def on_message(client, userdata, message):
                         output += f'{who}={row[1]}'
 
                     if output == '':
-                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'"{word}" has no karma (yet)')
+                        client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'"{word}" has no karma (yet)')
 
                     else:
-                        client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', f'Reverse karma of "{word}": {output}')
+                        client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'Reverse karma of "{word}": {output}')
 
                 except Exception as e:
                     print(f'Exception: {e}')
@@ -294,7 +294,7 @@ def on_message(client, userdata, message):
                             print(f'Unexpected exception {e} while handling exception {oe}')
 
             if karmas != None:
-                client.publish(f'{topic_prefix}to/irc/{channel}/privmsg', karmas)
+                client.publish(f'{topic_prefix}to/irc/{channel}/notice', karmas)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
