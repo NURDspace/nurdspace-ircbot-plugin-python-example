@@ -120,7 +120,7 @@ def on_message(client, userdata, message):
                 try:
                     cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
 
-                    ts_string    = final_d.strftime('%Y-%m-%d %H:%M:%S')
+                    ts_string    = final_d.strftime('%Y-%m-%d %H:%M:%S (%A)')
 
                     reminder_str = f'Reminder ({ts_string}): {what}'
 
@@ -142,7 +142,7 @@ def on_message(client, userdata, message):
                 client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
 
         elif command == 'date':
-            client.publish(response_topic, f'{datetime.datetime.now()}')
+            client.publish(response_topic, f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S (Bertrik/buZz dat is %A)")}')
 
 def start_reminder_threads(con):
     global db_file
