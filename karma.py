@@ -189,12 +189,15 @@ def on_message(client, userdata, message):
                 end = text.find(')')
 
                 if end != -1:
-                    text = text[1:end - 1]
-
                     space = text.find(' ', end)
 
                     if space != -1:
-                        text += text[end:space]
+                        text = text[1:end] + text[end + 1:space]
+
+                    else:
+                        text = text[1:end] + text[end + 1:]
+
+                    print('get', text)
 
                 else:
                     return
