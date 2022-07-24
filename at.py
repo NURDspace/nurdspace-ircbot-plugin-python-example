@@ -3,8 +3,10 @@
 # by FvH, released under Apache License v2.0
 
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
+# pip3 install dateparser
 # pip3 install pytz
 
+import dateparser
 import datetime
 import paho.mqtt.client as mqtt
 import pytz
@@ -45,7 +47,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD/MM/YYYY" or "HH:MM:SS" or those two combined)')
 
 def sleeper(dt, response_topic, txt):
-    time.sleep(dt)
+    if dt > 0:
+        time.sleep(dt)
 
     client.publish(response_topic, txt)
 
@@ -71,7 +74,7 @@ def on_message(client, userdata, message):
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     if channel in channels:
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+        response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         tokens  = text.split(' ')
 
@@ -79,54 +82,48 @@ def on_message(client, userdata, message):
 
         if command == 'at' and tokens[0][0] == prefix and len(tokens) >= 3:
             try:
-                dt_now = datetime.datetime.now()
+                input_    = tokens[1]
+                input_idx = 2
 
-                time_offset = 1
-                text_offset = 2
+                final_d   = None
 
-                date_string = None
-                time_string = '12:00:00'
+                while True:
+                    d = dateparser.parse(input_)
 
-                if '-' in tokens[1] or '/' in tokens[1]:
-                    time_offset = 2
-                    text_offset = 3
+                    if d == None:
+                        break
 
-                    date_string = tokens[1]
+                    final_d    = d
 
-                    if '-' in date_string:
-                        date_string = date_string.replace('-', '/')
+                    input_    += ' ' + tokens[input_idx]
+                    input_idx += 1
 
-                if ':' in tokens[time_offset]:
-                    time_string = tokens[time_offset]
+                if final_d == None:
+                    client.publish(response_topic, f'Cannot parse time-string {input_}')
 
-                    if len(time_string) == 5:
-                        time_string += ':00'
+                    return
 
-                else:
-                    text_offset = 2
+                what       = ' '.join(tokens[1:])
 
-                what = ' '.join(tokens[text_offset:]) + f' ({nick})'
+                event_time = final_d.timestamp()
 
-                if date_string == None:
-                    date_string = dt_now.strftime('%d/%m/%Y')
+                t_now      = time.time()
 
-                event_time     = netherlands_tz.localize(datetime.datetime.strptime(date_string + " " + time_string, '%d/%m/%Y %H:%M:%S')).timestamp()
-
-                t_now = time.time()
+                print(event_time - t_now)
 
                 if event_time < t_now:
-                    event_time += 86400
-
-                    date_string = 'tomorrow'
+                    final_d += datetime.timedelta(hours=24)
 
                 cur = con.cursor()
 
                 try:
                     cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
 
-                    reminder_str = f'Reminder ({date_string} {time_string}): {what}'
+                    ts_string    = final_d.strftime('%Y-%m-%d %H:%M:%S')
 
-                    client.publish(response_topic, f'Reminder stored for {date_string} {time_string}')
+                    reminder_str = f'Reminder ({ts_string}): {what}'
+
+                    client.publish(response_topic, f'Reminder stored for {ts_string}')
 
                     sleep_t      = event_time - t_now
 
@@ -135,13 +132,13 @@ def on_message(client, userdata, message):
                     t.start()
 
                 except Exception as e:
-                    client.publish(response_topic, f'Failed to remember reminder: {e}')
+                    client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
 
                 cur.close()
                 con.commit()
 
             except Exception as e:
-                client.publish(response_topic, f'Failed to remember reminder: {e}')
+                client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
 
 def start_reminder_threads(con):
     global db_file
