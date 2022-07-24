@@ -182,119 +182,85 @@ def on_message(client, userdata, message):
                 cur.close()
 
         else:
-            karmas = None
+            if len(text) == 0:
+                return
 
-            words = [ ]
-            concat = None
+            if text[0] == '(':
+                end = text.find(')')
 
-            for word in text.split(' '):
-                if word == '':  # ?!?!
-                    continue
+                if end != -1:
+                    text = text[1:end - 1]
 
-                if concat != None:
+                    space = text.find(' ', end)
 
-                    if ')' in word:
-                        concat += ' ' + word.replace(')', '')
+                    if space != -1:
+                        text += text[end:space]
 
-                        words.append(concat)
+                else:
+                    return
 
-                        concat = None
+            else:
+                space = text.find(' ')
 
-                    else:
-                        concat += ' ' + word
+                if space != -1:
+                    text = text[0:space]
 
-                    continue
+            count = 0
 
-                if word[0] == '(':
-                    if ')' in word:
-                        words.append(word[1:].replace(')', ''))
+            if len(text) >= 2:
+                if text[-2:] == '++':
+                    count = 1
 
-                        concat = None
+                elif text[-2:] == '--':
+                    count = -1
 
-                    else:
-                        concat = word[1:]
+                text = text[0:-2]
 
-                    continue
+            print('test', text, count, text[-2:0])
 
-                if '+' in word or '-' in word:
-                    words.append(word)
+            if count != 0:
+                print(f'Adding {count} karma to {text}')
 
-                    continue
+                query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
 
+                query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
 
-            for word in words:
-                count = 0
+                try:
+                    cur = con.cursor()
 
-                add = 0
-                while len(word) >= 1 and word[-1] == '+':
-                    add += 1
+                    cur.execute('BEGIN')
 
-                    word = word[:-1]
+                    cur.execute(query1, (channel.lower(), text.lower(), count, count))
 
-                if add >= 2:
-                    count += add - 1
+                    cur.execute(query2, (channel.lower(), text.lower(), nick.lower(), count, count))
 
-                sub = 0
-                while len(word) >= 1 and word[-1] == '-':
-                    sub += 1
+                    cur.execute('COMMIT')
 
-                    word = word[:-1]
+                    cur.execute('SELECT count FROM karma WHERE channel=? AND word=?', (channel.lower(), text.lower()))
+                    result = cur.fetchone()
 
-                if sub >= 2:
-                    count -= sub - 1
+                    cur.close()
 
-                if count != 0:
-                    print(f'Adding {count} karma to {word}')
+                    client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
 
-                    query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
-
-                    query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
+                except sqlite3.OperationalError as oe:
+                    # table does not exist probably
 
                     try:
-                        cur = con.cursor()
+                        query = 'CREATE TABLE karma(channel TEXT NOT NULL, word TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word))'
 
-                        cur.execute('BEGIN')
+                        cur.execute(query)
 
-                        cur.execute(query1, (channel.lower(), word.lower(), count, count))
+                        query = 'CREATE TABLE rkarma(channel TEXT NOT NULL, word TEXT NOT NULL, who TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word, who))'
 
-                        cur.execute(query2, (channel.lower(), word.lower(), nick.lower(), count, count))
-
-                        cur.execute('COMMIT')
-
-                        cur.execute('SELECT count FROM karma WHERE channel=? AND word=?', (channel.lower(), word.lower()))
-                        result = cur.fetchone()
-
-                        if karmas == None:
-                            karmas = ''
-
-                        else:
-                            karmas += ', '
-
-                        karmas += f'{word}: {result[0]}'
+                        cur.execute(query)
 
                         cur.close()
 
-                    except sqlite3.OperationalError as oe:
-                        # table does not exist probably
+                        con.commit()
 
-                        try:
-                            query = 'CREATE TABLE karma(channel TEXT NOT NULL, word TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word))'
-
-                            cur.execute(query)
-
-                            query = 'CREATE TABLE rkarma(channel TEXT NOT NULL, word TEXT NOT NULL, who TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word, who))'
-
-                            cur.execute(query)
-
-                            cur.close()
-
-                            con.commit()
-
-                        except Exception as e:
-                            print(f'Unexpected exception {e} while handling exception {oe}')
-
-            if karmas != None:
-                client.publish(f'{topic_prefix}to/irc/{channel}/notice', karmas)
+                    except Exception as e:
+                        print(f'Unexpected exception {e} while handling exception {oe}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
