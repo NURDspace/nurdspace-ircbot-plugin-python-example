@@ -45,6 +45,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD/MM/YYYY" or "HH:MM:SS" or those two combined)')
+    client.publish(target_topic, 'cmd=date|descr=Emit current date/time')
 
 def sleeper(dt, response_topic, txt):
     if dt > 0:
@@ -139,6 +140,9 @@ def on_message(client, userdata, message):
 
             except Exception as e:
                 client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
+
+        elif command == 'date':
+            client.publish(response_topic, f'{datetime.datetime.now()}')
 
 def start_reminder_threads(con):
     global db_file
