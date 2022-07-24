@@ -124,7 +124,7 @@ def update_feed(client, name):
 
     if output != '' and feeds[name]['announce'] == 1:
         for channel in announce_in:
-            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+            response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
             client.publish(response_topic, output)
 
@@ -166,7 +166,7 @@ def on_message(client, userdata, message):
         nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
         if channel in channels:
-            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+            response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
             tokens  = text.split(' ')
 

@@ -11,7 +11,7 @@ import time
 
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
+channels     = ['nurds']
 prefix       = '!'
 
 last_ring    = None

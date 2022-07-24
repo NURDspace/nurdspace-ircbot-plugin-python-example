@@ -60,7 +60,7 @@ def on_message(client, userdata, message):
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     if channel in channels:
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+        response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         tokens  = text.split(' ')
 

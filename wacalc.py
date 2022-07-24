@@ -60,7 +60,7 @@ def on_message(client, userdata, message):
 
         command = tokens[0][1:]
 
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+        response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         if command == 'wacalc':
             if len(tokens) >= 2:
