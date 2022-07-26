@@ -56,6 +56,9 @@ def on_message(client, userdata, message):
     channel = parts[2] if len(parts) >= 3 else 'nurds'  # default channel if can't be deduced
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'  # default nick if it can't be deduced
 
+    if len(parts) >= 4 and parts[3] == 'topic':
+        return
+
     command = text[1:].split()[0]
 
     if channel in channels:
@@ -65,6 +68,8 @@ def on_message(client, userdata, message):
         try:
             if '!' in nick:
                 nick = nick[0:nick.find('!')]
+
+            nick = nick.lower()
 
             nick_topic = f'{topic_prefix}to/irc-person/{nick}'
 
@@ -85,6 +90,13 @@ def on_message(client, userdata, message):
                 print(f'Sending message by {by_whom} to {nick}')
 
                 client.publish(nick_topic, f'{by_whom}@{ts}: {what}')
+
+                if '!' in by_whom:
+                    by_whom = by_whom[0:by_whom.find('!')]
+
+                by_whom_topic = f'{topic_prefix}to/irc-person/{by_whom}'
+
+                client.publish(by_whom_topic, f'Message for {nick} from {ts} delivered ({what})')
 
                 cur2 = con.cursor()
                 cur2.execute('DELETE FROM messages WHERE nr=?', (nr,))
