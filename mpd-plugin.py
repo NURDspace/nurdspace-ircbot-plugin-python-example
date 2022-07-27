@@ -132,14 +132,25 @@ def on_message(client, userdata, message):
                     if command == 'mpdsearch':
                         results = mpd_client.search('title', text[space + 1:])
 
-                        out = ''
+                        out  = ''
+
+                        seen = set()
 
                         for result in results:
                             if 'artist' in result and 'title' in result:
+                                to_add = '\2' + result['artist'] + '\2: ' + result['title']
+
+                                temp   = to_add.lower()
+
+                                if temp in seen:
+                                    continue
+
+                                seen.add(temp)
+
                                 if out != '':
                                     out += ', '
 
-                                out += '\2' + result['artist'] + '\2: ' + result['title']
+                                out += to_add
 
                                 if len(out) > 200:
                                     break
