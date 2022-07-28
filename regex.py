@@ -30,6 +30,9 @@ def on_message(client, userdata, message):
         channel = parts[2] if len(parts) >= 3 else 'nurds'
         nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
+        if parts[-1] == 'topic':
+            return
+
         if channel in channels:
             if len(text) == 0:
                 return
