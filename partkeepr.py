@@ -27,7 +27,7 @@ def search_partkeepr(what):
 
     cur = conn.cursor()
 
-    cur.execute("SELECT part.name, storagelocation.name FROM part, storagelocation WHERE part.storagelocation_id = storagelocation.id AND (part.name ILIKE '%%' || %s || '%%' OR part.description ILIKE '%%' || %s || '%%')", (what, what,))
+    cur.execute("SELECT part.name, storagelocation.name, part.stocklevel FROM part, storagelocation WHERE part.storagelocation_id = storagelocation.id AND (part.name ILIKE '%%' || %s || '%%' OR part.description ILIKE '%%' || %s || '%%') AND part.stocklevel > 0", (what, what,))
 
     out = ''
     cnt = 0
@@ -36,7 +36,7 @@ def search_partkeepr(what):
         if out != '':
             out += ', '
 
-        out += f'{row[0]}: \2{row[1]}\2'
+        out += f'{row[0]}: \2{row[1]}\2 ({row[2]})'
 
         cnt += 1
 
