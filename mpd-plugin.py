@@ -63,6 +63,32 @@ def gen_song_name(song_meta):
 
     return playing
 
+def group_results(in_):
+    out  = ''
+
+    seen = set()
+
+    for result in in_:
+        if 'artist' in result and 'title' in result:
+            to_add = '\2' + result['artist'] + '\2: ' + result['title']
+
+            temp   = to_add.lower()
+
+            if temp in seen:
+                continue
+
+            seen.add(temp)
+
+            if out != '':
+                out += ', '
+
+            out += to_add
+
+            if len(out) > 350:
+                break
+
+    return out
+
 def on_message(client, userdata, message):
     global prefix
 
@@ -132,28 +158,18 @@ def on_message(client, userdata, message):
                     if command == 'mpdsearch':
                         results = mpd_client.search('title', text[space + 1:])
 
-                        out  = ''
+                        out = group_results(results)
 
-                        seen = set()
+                        if len(out) < 350:
+                            results = mpd_client.search('artist', text[space + 1:])
 
-                        for result in results:
-                            if 'artist' in result and 'title' in result:
-                                to_add = '\2' + result['artist'] + '\2: ' + result['title']
+                            temp = group_results(results)
 
-                                temp   = to_add.lower()
+                            if temp != '':
+                                out += ' | ' + temp
 
-                                if temp in seen:
-                                    continue
-
-                                seen.add(temp)
-
-                                if out != '':
-                                    out += ', '
-
-                                out += to_add
-
-                                if len(out) > 200:
-                                    break
+                                if len(out) > 350:
+                                    out = out[0:350]
 
                         if out == '':
                             client.publish(response_topic, 'No such song found')
