@@ -166,7 +166,10 @@ def on_message(client, userdata, message):
                             temp = group_results(results)
 
                             if temp != '':
-                                out += ' | ' + temp
+                                if out != '':
+                                    out += ' | '
+
+                                out += temp
 
                                 if len(out) > 350:
                                     out = out[0:350]
