@@ -47,10 +47,26 @@ def search_partkeepr(what):
 
     return out
 
+def get_partkeepr_stats():
+    conn = psycopg2.connect(host=pk_db_host, database=pk_db_db, user=pk_db_user, password=pk_db_password, port=5432)
+
+    cur = conn.cursor()
+
+    cur.execute('SELECT (SELECT COUNT(DISTINCT name) FROM storagelocation) AS n_loc, (SELECT COUNT(*) FROM part) AS n_upart_total, (SELECT COUNT(*) FROM part WHERE stocklevel > 0) AS n_upart_avail, (SELECT SUM(stocklevel) FROM part) AS n_total_part, (SELECT COUNT(DISTINCT(storagelocation_id)) FROM part WHERE stocklevel > 0) AS n_loc_in_use')
+
+    row = cur.fetchone()
+
+    out = f'Unique storage locations: {row[0]} (in use: {row[4]}), unique parts registered: {row[1]}, unique parts available (>= 1): {row[2]}, total number of parts: {row[3]}'
+
+    conn.close()
+
+    return out
+
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=pklocate|descr=Locate in partkeepr')
+    client.publish(target_topic, 'cmd=pkstats|descr=Partkeepr statistics')
 
 def on_message(client, userdata, message):
     global last_ring
@@ -96,6 +112,17 @@ def on_message(client, userdata, message):
 
                 else:
                     client.publish(response_topic, results)
+
+            except Exception as e:
+                print(traceback.format_exception(type(e), e, e.__traceback__))
+
+                client.publish(response_topic, f'Partkeepr plugin: {e}')
+
+        elif command == 'pkstats':
+            try:
+                stats = get_partkeepr_stats()
+
+                client.publish(response_topic, stats)
 
             except Exception as e:
                 print(traceback.format_exception(type(e), e, e.__traceback__))
