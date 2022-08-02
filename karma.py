@@ -221,7 +221,7 @@ def on_message(client, userdata, message):
 
             print('test', text, count, text[-2:0])
 
-            if count != 0:
+            if count != 0 and text[0].isalpha():
                 print(f'Adding {count} karma to {text}')
 
                 query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
@@ -244,6 +244,7 @@ def on_message(client, userdata, message):
 
                     cur.close()
 
+                    print(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
                     client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
 
                 except sqlite3.OperationalError as oe:
