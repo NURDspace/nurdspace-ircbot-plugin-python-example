@@ -49,6 +49,7 @@ def announce_commands(client):
 #    client.publish(target_topic, 'cmd=reken|descr=Calculate a simple formula')
     client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte, 2: gewicht.')
     client.publish(target_topic, 'cmd=qanime|descr=Anime quote')
+    client.publish(target_topic, 'cmd=dogfact|descr=Dog facts')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -367,6 +368,17 @@ def on_message(client, userdata, message):
 
             except Exception as e:
                 client.publish(response_topic, f'Exception during "qanime": {e}, line number: {e.__traceback__.tb_lineno}')
+
+        elif command == 'dogfact':
+            try:
+                j = get_json('https://dog-api.kinduff.com/api/facts')
+
+                fact = j['facts'][0]
+
+                client.publish(response_topic, fact)
+
+            except Exception as e:
+                client.publish(response_topic, f'Exception during "dogfact": {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
