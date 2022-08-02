@@ -50,6 +50,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte, 2: gewicht.')
     client.publish(target_topic, 'cmd=qanime|descr=Anime quote')
     client.publish(target_topic, 'cmd=dogfact|descr=Dog facts')
+    client.publish(target_topic, 'cmd=profanity|descr=Check if a text contains profanity')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -245,6 +246,17 @@ def cmd_bmi(client, response_topic, parameters):
     except Exception as e:
         client.publish(response_topic, f'Exception during "bmi": {e}, line number: {e.__traceback__.tb_lineno}')
 
+def cmd_profanity(client, response_topic, value):
+    try:
+        if value == '':
+            return
+
+        r = requests.get('https://www.purgomalum.com/service/containsprofanity?text=' + urllib.parse.quote(value), timeout=10)
+
+        client.publish(response_topic, f"Profanity: {r.content.decode('ascii')}")
+
+    except Exception as e:
+        client.publish(response_topic, f'Exception during "profanity": {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_message(client, userdata, message):
     global choices
@@ -379,6 +391,14 @@ def on_message(client, userdata, message):
 
             except Exception as e:
                 client.publish(response_topic, f'Exception during "dogfact": {e}, line number: {e.__traceback__.tb_lineno}')
+
+        elif command == 'profanity':
+            space = text.find(' ')
+
+            if space != -1:
+                value = text[space:].strip()
+
+                cmd_profanity(client, response_topic, value)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
