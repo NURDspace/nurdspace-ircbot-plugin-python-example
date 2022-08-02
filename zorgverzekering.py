@@ -6,7 +6,7 @@
 
 import math
 import paho.mqtt.client as mqtt
-from py_expression_eval import Parser
+#from py_expression_eval import Parser
 import random
 import re
 import requests
@@ -46,7 +46,8 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=janee|descr=Voor levensvragen')
     client.publish(target_topic, 'cmd=regen|descr=Regenvoorspelling voor omgeving Wageningen')
     client.publish(target_topic, 'cmd=@|descr=What is the titel of the last URL posted')
-    client.publish(target_topic, 'cmd=reken|descr=Calculate a simple formula')
+#    client.publish(target_topic, 'cmd=reken|descr=Calculate a simple formula')
+    client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte, 2: gewicht.')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -217,16 +218,30 @@ def cmd_regen(client, response_topic):
     except:
         client.publish(response_topic, f'Exception during "regen": {e}, line number: {e.__traceback__.tb_lineno}')
 
-def cmd_reken(client, response_topic, message):
+#def cmd_reken(client, response_topic, message):
+#    try:
+#        parser = Parser()
+
+#        result = parser.parse(message).evaluate({})
+
+#        client.publish(response_topic, f'De uitkomst is: {result}')
+
+#    except Exception as e:
+#        client.publish(response_topic, f'Exception during "reken": {e}, line number: {e.__traceback__.tb_lineno}')
+
+def cmd_bmi(client, response_topic, parameters):
     try:
-        parser = Parser()
+        height = float(parameters[0])
+        weight = float(parameters[1])
 
-        result = parser.parse(message).evaluate({})
+        oldBMI =       weight / math.pow(height, 2);
+        newBMI = 1.3 * weight / math.pow(height, 2.5);
 
-        client.publish(response_topic, f'De uitkomst is: {result}')
+        client.publish(response_topic, f'Old BMI: {oldBMI:.2f}, new BMI: {newBMI:.2f}')
 
     except Exception as e:
-        client.publish(response_topic, f'Exception during "reken": {e}, line number: {e.__traceback__.tb_lineno}')
+        client.publish(response_topic, f'Exception during "bmi": {e}, line number: {e.__traceback__.tb_lineno}')
+
 
 def on_message(client, userdata, message):
     global choices
@@ -329,13 +344,16 @@ def on_message(client, userdata, message):
         elif command == '@':
             cmd_at(client, response_topic)
 
-        elif command == 'reken':
-            space = text.find(' ')
+#        elif command == 'reken':
+#            space = text.find(' ')
 
-            if space != -1:
-                value = text[space:].strip()
+#            if space != -1:
+#                value = text[space:].strip()
 
-                cmd_reken(client, response_topic, value)
+#                cmd_reken(client, response_topic, value)
+
+        elif command == 'bmi' and len(value_all) == 2:
+            cmd_bmi(client, response_topic, value_all)
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
