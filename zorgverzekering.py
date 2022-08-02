@@ -48,6 +48,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=@|descr=What is the titel of the last URL posted')
 #    client.publish(target_topic, 'cmd=reken|descr=Calculate a simple formula')
     client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte, 2: gewicht.')
+    client.publish(target_topic, 'cmd=qanime|descr=Anime quote')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -355,6 +356,17 @@ def on_message(client, userdata, message):
 
         elif command == 'bmi' and len(value_all) == 2:
             cmd_bmi(client, response_topic, value_all)
+
+        elif command == 'qanime':
+            try:
+                j = get_json('https://animechan.vercel.app/api/random')
+
+                quote = f'{j["quote"]} ({j["anime"]} / {j["character"]})'
+
+                client.publish(response_topic, quote)
+
+            except Exception as e:
+                client.publish(response_topic, f'Exception during "qanime": {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
