@@ -27,7 +27,7 @@ def search_partkeepr(what):
 
     cur = conn.cursor()
 
-    cur.execute("SELECT part.name, storagelocation.name, part.stocklevel FROM part, storagelocation WHERE part.storagelocation_id = storagelocation.id AND (part.name ILIKE '%%' || %s || '%%' OR part.description ILIKE '%%' || %s || '%%') AND part.stocklevel > 0", (what, what,))
+    cur.execute("SELECT part.name, storagelocation.name, part.stocklevel FROM part, storagelocation WHERE part.storagelocation_id = storagelocation.id AND (part.name ILIKE '%%' || %s || '%%' OR part.description ILIKE '%%' || %s || '%%') AND part.stocklevel > 0 ORDER BY part.createdate DESC", (what, what,))
 
     out = ''
     cnt = 0
