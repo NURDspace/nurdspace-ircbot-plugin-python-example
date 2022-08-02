@@ -14,6 +14,8 @@ import sqlite3
 import threading
 import time
 
+print('Init...')
+
 mqtt_server    = 'mqtt.vm.nurd.space'
 topic_prefix   = 'GHBot/'
 channels       = ['nurdbottest', 'nurds', 'nurdsbofh']
@@ -21,6 +23,7 @@ db_file        = 'at.db'
 prefix         = '!'
 netherlands_tz = pytz.timezone("Europe/Amsterdam")
 
+print('Init DB...')
 con = sqlite3.connect(db_file)
 
 cur = con.cursor()
@@ -147,6 +150,8 @@ def on_message(client, userdata, message):
 def start_reminder_threads(con):
     global db_file
 
+    print('Loading reminders...')
+
     con = sqlite3.connect(db_file)
 
     cur = con.cursor()
@@ -192,6 +197,9 @@ def announce_thread(client):
         except Exception as e:
             print(f'Failed to announce: {e}')
 
+
+print('Connect to mqtt...')
+
 client = mqtt.Client()
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 client.on_message = on_message
@@ -201,5 +209,7 @@ t1 = threading.Thread(target=announce_thread, args=(client,))
 t1.start()
 
 start_reminder_threads(con)
+
+print('Go!')
 
 client.loop_forever()
