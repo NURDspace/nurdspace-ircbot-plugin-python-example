@@ -40,7 +40,7 @@ def summon(nick, text, by_whom, channel):
     ok = True
 
     cur = con.cursor()
-    cur.execute('SELECT email, jabber FROM entities WHERE nick=?', (nick,))
+    cur.execute('SELECT email, jabber FROM entities WHERE nick=?', (nick.lower(),))
 
     row = cur.fetchone()
     if row == None:
@@ -141,7 +141,7 @@ def on_message(client, userdata, message):
             try:
                 dest = text.split()[1]
 
-                msg  = text
+                msg  = f'You were summoned by {nick}: {text}'
 
                 if summon(dest, msg, nick, channel):
                     client.publish(response_topic, f'{dest} is summoned')
