@@ -24,6 +24,7 @@ db           = 'summon.db'
 # summoncfg.py should contain:
 #xmpp_user = '...jabber account...'
 #xmpp_pass = '...jabber account password...'
+#xmpp_host = '...ip-address or hostname of xmpp-server to which xmpp_user belongs...'
 
 
 con = sqlite3.connect(db)
@@ -72,19 +73,19 @@ def summon(nick, text, by_whom, channel):
             jid = xmpp.protocol.JID(xmpp_user)
             cl  = xmpp.Client(jid.getDomain(), debug=[])
 
-            xcon = cl.connect()
+            #xcon = cl.connect()
+            xcon = cl.connect((xmpp_host, 5222))
             if not xcon:
+                print('Cannot connect to XMPP server')
                 return False
 
             auth = cl.auth(jid.getNode(), xmpp_pass, resource=jid.getResource())
             if not auth:
-                print('could not authenticate!')
+                print('Cannot authenticate to XMPP server')
                 return False
 
-            print('authenticated using', auth)
-
             id_ = cl.send(xmpp.protocol.Message(tojid, text))
-            print('sent message with id', id_)
+            print(f'Sent message with id {id_}')
 
             time.sleep(1)
 
