@@ -154,14 +154,15 @@ def cmd_at(client, response_topic):
         try:
             r = requests.get(url, timeout=10)
 
-            text = r.content.decode('utf-8').lower()
+            text = r.content.decode('utf-8')
+            textl = text.lower()
         
-            title_start = text.find('<title>')
+            title_start = textl.find('<title>')
 
             if title_start == -1:
                 continue
 
-            title_end = text.find('</title>', title_start)
+            title_end = textl.find('</title>', title_start)
 
             if title_end == -1:
                 continue
