@@ -51,6 +51,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=qanime|descr=Anime quote')
     client.publish(target_topic, 'cmd=dogfact|descr=Dog facts')
     client.publish(target_topic, 'cmd=profanity|descr=Check if a text contains profanity')
+    client.publish(target_topic, 'cmd=random|descr=Return a random number')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -399,6 +400,11 @@ def on_message(client, userdata, message):
                 value = text[space:].strip()
 
                 cmd_profanity(client, response_topic, value)
+
+        elif command == 'random':
+            r = random.randint(0, int(value)) if value != None else int(random.random() * 10)
+
+            client.publish(response_topic, f'A random number is {r}')
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
