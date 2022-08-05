@@ -86,8 +86,8 @@ def cmd_bclabel(client, response_topic, value):  # bookcrossing
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=label|descr=Print een label.')
-    client.publish(target_topic, 'cmd=bclabel|descr=Print a book crossing label.')
+    client.publish(target_topic, 'cmd=label|descr=Print een label.|agrp=members')
+    client.publish(target_topic, 'cmd=bclabel|descr=Print a book crossing label.|agrp=members')
 
 def on_message(client, userdata, message):
     global choices
