@@ -44,7 +44,7 @@ def summon(nick, text, by_whom, channel):
 
     row = cur.fetchone()
     if row == None:
-        return False
+        return (False, 'nothing registered for user')
 
     email  = row[0]
     jabber = row[1]
@@ -62,9 +62,7 @@ def summon(nick, text, by_whom, channel):
            smtpObj.sendmail(sender, receivers, message)
 
         except SMTPException as e:
-           print(f'Exception during "sendmail": {e}, line number: {e.__traceback__.tb_lineno}')
-
-           ok = False
+           return (False, f'Exception during "sendmail": {e}, line number: {e.__traceback__.tb_lineno}')
 
     if jabber != None:
         try:
@@ -76,13 +74,11 @@ def summon(nick, text, by_whom, channel):
             #xcon = cl.connect()
             xcon = cl.connect((xmpp_host, 5222))
             if not xcon:
-                print('Cannot connect to XMPP server')
-                return False
+                return (False, 'Cannot connect to XMPP server')
 
             auth = cl.auth(jid.getNode(), xmpp_pass, resource=jid.getResource())
             if not auth:
-                print('Cannot authenticate to XMPP server')
-                return False
+                return (False, 'Cannot authenticate to XMPP server')
 
             id_ = cl.send(xmpp.protocol.Message(tojid, text))
             print(f'Sent message with id {id_}')
@@ -92,13 +88,12 @@ def summon(nick, text, by_whom, channel):
             cl.disconnect()
 
         except Exception as e:
-           print(f'Exception during "xmpp": {e}, line number: {e.__traceback__.tb_lineno}')
-           ok = False
+           return (False, f'Exception during "xmpp": {e}, line number: {e.__traceback__.tb_lineno}')
 
     if not email and not jabber:
-        ok = False
+        return (False, 'No summon protocol registered for that user')
 
-    return ok
+    return (True, '')
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -143,11 +138,13 @@ def on_message(client, userdata, message):
 
                 msg  = f'You were summoned by {nick}: {text}'
 
-                if summon(dest, msg, nick, channel):
+                rc   = summon(dest, msg, nick, channel)
+
+                if rc[0]:
                     client.publish(response_topic, f'{dest} is summoned')
 
                 else:
-                    client.publish(response_topic, f'{dest} is not summoned')
+                    client.publish(response_topic, f'{dest} is not summoned: {rc[1]}')
 
             except Exception as e:
                 client.publish(response_topic, f'Exception during "summon": {e}, line number: {e.__traceback__.tb_lineno}')
