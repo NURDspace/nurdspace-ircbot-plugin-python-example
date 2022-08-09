@@ -4,8 +4,10 @@
 
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 
+import datetime
 import json
 import paho.mqtt.client as mqtt
+import pytz
 import requests
 import threading
 import time
@@ -14,6 +16,8 @@ mqtt_server  = 'mqtt.vm.nurd.space'   # TODO: hostname of MQTT server
 topic_prefix = 'GHBot/'  # leave this as is
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']  # TODO: channels to respond to
 prefix       = '!'  # !command, will be updated by ghbot
+
+netherlands_tz = pytz.timezone("Europe/Amsterdam")
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -60,6 +64,8 @@ def on_message(client, userdata, message):
 
                 j = json.loads(r.content.decode('ascii'))
 
+                t = j['time']
+
                 out = ''
 
                 for source in j['mix']:
@@ -90,6 +96,10 @@ def on_message(client, userdata, message):
                         color_index = (abs(hash(source['color']) * 9) % 13) + 2
 
                     out += f"\3{color_index}{source['id']}: {source['power']} megawatt ({perc:.2f}%)"
+
+                ts = netherlands_tz.localize(datetime.datetime.fromtimestamp(t))
+
+                out += f' ({ts})'
 
                 client.publish(response_topic, out)
 
