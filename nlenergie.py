@@ -6,6 +6,7 @@
 
 import datetime
 import json
+import math
 import paho.mqtt.client as mqtt
 import pytz
 import requests
@@ -19,6 +20,8 @@ prefix       = '!'  # !command, will be updated by ghbot
 
 netherlands_tz = pytz.timezone("Europe/Amsterdam")
 
+prev_j = None
+
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
@@ -26,6 +29,7 @@ def announce_commands(client):
 
 def on_message(client, userdata, message):
     global prefix
+    global prev_j
 
     text = message.payload.decode('utf-8')
 
@@ -58,21 +62,35 @@ def on_message(client, userdata, message):
 
         if command == 'nlenergie':
             try:
+                parts = text.split()
+                verbose = True if len(parts) >= 2 and parts[1] == '-v' else False
                 headers = { 'User-Agent': 'GHBot' }
 
                 r = requests.get('http://stofradar.nl:9001/energy/latest', timeout=10, headers=headers)
 
-                j = json.loads(r.content.decode('ascii'))
+                try:
+                    j = json.loads(r.content.decode('ascii'))
 
-                t = j['time']
+                    t = j['time']
+
+                    prev_j = j
+
+                except Exception as e:
+                    j = prev_j
+
+                    t = j['time']
 
                 out = ''
+                outblocks = ''
+                outblocks_l = ''
 
                 for source in j['mix']:
                     if out != '':
                         out += ', '
+                        outblocks_l += ', '
 
                     perc = source['power'] * 100.0 / j['total']
+                    not_perc = source['power'] * 40.0 / j['total']
 
                     if source['id'] == 'solar':
                         color_index = 8
@@ -97,11 +115,20 @@ def on_message(client, userdata, message):
 
                     out += f"\3{color_index}{source['id']}: {source['power']} megawatt ({perc:.2f}%)"
 
+                    outblocks += f'\3{color_index}'
+                    outblocks += '\u2588' * math.ceil(not_perc)
+
+                    outblocks_l += f"\3{color_index}\u2588 {source['id']}"
+
                 ts = netherlands_tz.localize(datetime.datetime.fromtimestamp(t))
 
                 out += f' ({ts})'
 
-                client.publish(response_topic, out)
+                if verbose:
+                    client.publish(response_topic, out)
+
+                else:
+                    client.publish(response_topic, outblocks + f' ({ts} / {outblocks_l})')
 
             except Exception as e:
                 client.publish(response_topic, f'Exception during "nlenergie": {e}, line number: {e.__traceback__.tb_lineno}')
