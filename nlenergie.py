@@ -58,7 +58,7 @@ def on_message(client, userdata, message):
     command = text[1:].split(' ')[0]
 
     if channel in channels:
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+        response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         if command == 'nlenergie':
             try:
@@ -125,10 +125,10 @@ def on_message(client, userdata, message):
                 out += f' ({ts})'
 
                 if verbose:
-                    client.publish(response_topic, out)
+                    client.publish(response_topic, outblocks + f' ({ts} / {outblocks_l})')
 
                 else:
-                    client.publish(response_topic, outblocks + f' ({ts} / {outblocks_l})')
+                    client.publish(response_topic, out)
 
             except Exception as e:
                 client.publish(response_topic, f'Exception during "nlenergie": {e}, line number: {e.__traceback__.tb_lineno}')
