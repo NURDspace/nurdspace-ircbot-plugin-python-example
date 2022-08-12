@@ -35,8 +35,8 @@ con.commit()
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=learn|descr=Store a fact about something')
-    client.publish(target_topic, 'cmd=dellearn|descr=Forget a fact')
+    client.publish(target_topic, 'cmd=learn|descr=Store a fact about something, e.g.: !learn SOMETHING is DESCRIPTION. Retrieve with: "something?" Use "something? -v" to retrieve the number to delete it with !dellearn')
+    client.publish(target_topic, 'cmd=dellearn|descr=Forget a fact. The number required as a parameter can be retrieved with "something? -v" (the -v switch)')
 
 def on_message(client, userdata, message):
     global prefix
