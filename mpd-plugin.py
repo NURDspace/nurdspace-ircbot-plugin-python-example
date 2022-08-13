@@ -191,6 +191,8 @@ def on_message(client, userdata, message):
             elif command == 'pause':
                 mpd_client.pause()
 
+                status = mpd_client.status()
+
                 if status["state"] == 'play':
                     client.publish(response_topic, f'The music is unpaused')
 
