@@ -47,7 +47,7 @@ con.commit()
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD/MM/YYYY" or "HH:MM:SS" or those two combined)')
+    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD-MM-YYYY" or "HH:MM:SS" or those two combined)')
     client.publish(target_topic, 'cmd=date|descr=Emit current date/time')
 
 def sleeper(dt, response_topic, txt):
@@ -80,13 +80,13 @@ def on_message(client, userdata, message):
     if channel in channels:
         response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
-        tokens  = text.split(' ')
+        tokens  = text.split()
 
         command = tokens[0][1:]
 
         if command == 'at' and tokens[0][0] == prefix and len(tokens) >= 3:
             try:
-                input_    = tokens[1]
+                input_    = tokens[1].replace('/', '-')
                 input_idx = 2
 
                 final_d   = None
@@ -113,10 +113,9 @@ def on_message(client, userdata, message):
 
                 t_now      = time.time()
 
-                print(event_time - t_now)
-
-                if event_time < t_now:
-                    final_d += datetime.timedelta(hours=24)
+                while event_time < t_now:
+                    final_d    += datetime.timedelta(hours=24)
+                    event_time += 86400
 
                 cur = con.cursor()
 
