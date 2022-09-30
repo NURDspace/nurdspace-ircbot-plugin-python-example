@@ -11,6 +11,9 @@ import time
 from datetime import timedelta
 
 
+import socket
+import sys
+
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
@@ -28,8 +31,14 @@ def most_busy_vm(data):
 
 def get_erratic():
     data = requests.get("http://10.208.30.70:8881/").json()
+    gpu = requests.get("http://10.208.30.24:8000/gpu").json()
     
-    return "Erratic - CPU: %s | Load: %s, %s, %s | Uptime: %s | Mem: u:%s/a:%s (%s) | iowait: %s | Cpu temp: %sc | vmbr0: %s MB/s / %s MB/s | vmbr1: %s MB/s / %s MB/s | Busiest: %s (%s) | LXCs: %s KVMs: %s" % (str(data['cpu']['total']) + "%", data['loadavg'][0], data['loadavg'][1], data['loadavg'][1], "{}".format(str(timedelta(seconds=data['uptime']))), data['memory']['used'], data['memory']['available'], str(data['memory']['percent_used']) + "%", str(data['times']['iowait']) + "%", data['temps']['coretemp'][0][1], data['nic'][0]['vmbr0']['in'], data['nic'][0]['vmbr0']['out'], data['nic'][1]['vmbr1']['in'], data['nic'][1]['vmbr1']['out'], most_busy_vm(data)[0]['name'], str(round(most_busy_vm(data)[0]['cpu']*100, 3)) + "%", data['proxmox_types']['lxc'], data['proxmox_types']['qemu'])
+    return "Erratic - CPU: %s (%sc)| Load: %s, %s, %s | Uptime: %s | Mem: u:%s/a:%s (%s) | iowait: %s | GPU: %s (%s / %s) | Busiest: %s (%s) | LXCs: %s KVMs: %s" % \
+        (str(data['cpu']['total']) + "%", data['temps']['coretemp'][0][1], data['loadavg'][0], data['loadavg'][1], data['loadavg'][1], "{}".format(str(timedelta(seconds=data['uptime']))), data['memory']['used'], \
+        data['memory']['available'], str(data['memory']['percent_used']) + "%", str(data['times']['iowait']) + "%", \
+            gpu['nvidia_smi_log']['gpu']['utilization']['gpu_util'], gpu['nvidia_smi_log']['gpu']['temperature']['gpu_temp'], gpu['nvidia_smi_log']['gpu']['power_readings']['power_draw'], \
+        most_busy_vm(data)[0]['name'], str(round(most_busy_vm(data)[0]['cpu']*100, 3)) + "%", \
+        data['proxmox_types']['lxc'], data['proxmox_types']['qemu'])
 
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
@@ -65,17 +74,16 @@ def on_message(client, userdata, message):
 
     command = text[1:].split(' ')[0]
 
-    if channel in channels:
+    if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
         response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         if command == 'erratic':
             client.publish(response_topic, get_erratic())
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        client.subscribe(f'{topic_prefix}from/irc/#')
+    client.subscribe(f'{topic_prefix}from/irc/#')
 
-        client.subscribe(f'{topic_prefix}from/bot/command')
+    client.subscribe(f'{topic_prefix}from/bot/command')
 
 def announce_thread(client):
     while True:
@@ -87,10 +95,10 @@ def announce_thread(client):
         except Exception as e:
             print(f'Failed to announce: {e}')
 
-client = mqtt.Client()
-client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
+client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 t = threading.Thread(target=announce_thread, args=(client,))
 t.start()

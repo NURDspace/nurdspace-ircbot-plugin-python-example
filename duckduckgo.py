@@ -11,6 +11,9 @@ import threading
 import time
 import urllib.parse
 
+import socket
+import sys
+
 mqtt_server  = 'mqtt.vm.nurd.space'   # TODO: hostname of MQTT server
 topic_prefix = 'GHBot/'  # leave this as is
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']  # TODO: channels to respond to
@@ -73,7 +76,7 @@ def on_message(client, userdata, message):
 
     command = text[1:].split(' ')[0]
 
-    if channel in channels:
+    if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
         response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         if command == 'duckduckgo':
@@ -89,10 +92,9 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, 'No results')
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        client.subscribe(f'{topic_prefix}from/irc/#')
+    client.subscribe(f'{topic_prefix}from/irc/#')
 
-        client.subscribe(f'{topic_prefix}from/bot/command')
+    client.subscribe(f'{topic_prefix}from/bot/command')
 
 def announce_thread(client):
     while True:
@@ -104,10 +106,10 @@ def announce_thread(client):
         except Exception as e:
             print(f'Failed to announce: {e}')
 
-client = mqtt.Client()
-client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
+client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 t = threading.Thread(target=announce_thread, args=(client,))
 t.start()

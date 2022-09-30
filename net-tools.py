@@ -14,6 +14,9 @@ import threading
 import time
 
 
+
+import socket
+import sys
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'test']
@@ -49,7 +52,7 @@ def on_message(client, userdata, message):
     channel = parts[2] if len(parts) >= 3 else 'nurds'
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
-    if channel in channels:
+    if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
         tokens  = text.split(' ')
 
         command = tokens[0][1:]
@@ -84,10 +87,9 @@ def on_message(client, userdata, message):
                 client.publish(response_topic, f'Failed determining time ({e})')
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        client.subscribe(f'{topic_prefix}from/irc/#')
+    client.subscribe(f'{topic_prefix}from/irc/#')
 
-        client.subscribe(f'{topic_prefix}from/bot/command')
+    client.subscribe(f'{topic_prefix}from/bot/command')
 
 def announce_thread(client):
     while True:
@@ -99,10 +101,10 @@ def announce_thread(client):
         except Exception as e:
             print(f'Failed to announce: {e}')
 
-client = mqtt.Client()
-client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
+client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 t = threading.Thread(target=announce_thread, args=(client,))
 t.start()

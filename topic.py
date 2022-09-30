@@ -5,27 +5,47 @@
 # either install 'python3-paho-mqtt' or 'pip3 install paho-mqtt'
 
 import paho.mqtt.client as mqtt
+import paho.mqtt.publish as publish
 import threading
 import time
 
+
+import socket
+import sys
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
-channels     = ['nurdbottest', 'nurds', 'nurdsbofh']
+channels     = ['nurdbottest', 'nurds', 'nurdsbofh', 'nurds-dream']
 prefix       = '!'
-topics       = [None, None, None]  # as many elements as in the 'channels' list (above)
+topics       = [None, None, None, None]  # as many elements as in the 'channels' list (above)
 
-last_state   = '0'
+last_state   = None
 
-def announce_commands(client):
+first        = True
+
+def log(str_):
+    try:
+        fh = open('/home/ghbot/topic.log', 'a+')
+        fh.write(f'{str_}\n')
+        fh.close()
+
+        print(str_)
+
+    except Exception as e:
+        print(f'log error: {e}, line number: {e.__traceback__.tb_lineno}')
+
+def announce_commands():
+    global mqtt_server
+
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=cleartopic|descr=Remove all text from topic')
-    client.publish(target_topic, 'cmd=settopic|descr=Remove all text from topic and replace it by something new')
-    client.publish(target_topic, 'cmd=addtopic|descr=Add a text to the existing topic')
-    client.publish(target_topic, 'cmd=deltopic|descr=Delete an entry from the topic matching the given text')
+    publish.single(target_topic, hostname=mqtt_server, payload='cmd=cleartopic|descr=Remove all text from topic')
+    publish.single(target_topic, hostname=mqtt_server, payload='cmd=settopic|descr=Remove all text from topic and replace it by something new')
+    publish.single(target_topic, hostname=mqtt_server, payload='cmd=addtopic|descr=Add a text to the existing topic')
+    publish.single(target_topic, hostname=mqtt_server, payload='cmd=deltopic|descr=Delete an entry from the topic matching the given text')
 
-def set_topic(channel, text):
+def set_topic(channel_nr, text):
     global last_state
+    global topics
 
     if text[0:9] == 'Space is ':
         pipe = text.find('|')
@@ -33,9 +53,15 @@ def set_topic(channel, text):
         if pipe != -1:
             text = text[pipe + 1:].strip()
 
-    text = 'Space is ' + ('OPEN' if last_state == '1' else 'closed') + ' | ' + text
+    text = 'Space is ' + ('OPEN' if last_state.lower() == 'true' else 'closed') + ' | ' + text
 
-    client.publish(f'{topic_prefix}to/irc/{channel}/topic', text)
+    print('OLD', topics[channel_nr])
+    print('NEW', text)
+
+    if text != topics[channel_nr]:
+        client.publish(f'{topic_prefix}to/irc/{channels[channel_nr]}/topic', text)
+
+        topics[channel_nr] = text
 
 def on_message(client, userdata, message):
     global last_state
@@ -43,20 +69,28 @@ def on_message(client, userdata, message):
 
     text = message.payload.decode('utf-8')
 
-    if message.topic == 'space/statedigit':
-        if text != last_state:
-            last_state = text
+    print(message.topic, text)
 
-            for i in range(0, len(channels)):
-                if topics[i] != None:
-                    set_topic(channels[i], topics[i])
+    if message.topic == 'space/state':
+        try:
+            if text != last_state:
+                last_state = text
+
+                log(f'state changed to {text}')
+
+                for i in range(0, len(channels)):
+                    if topics[i] != None:
+                        set_topic(i, topics[i])
+
+        except Exception as e:
+            log(f'space/stagedigit error: {e}, line number: {e.__traceback__.tb_lineno}')
 
         return
 
     topic = message.topic[len(topic_prefix):]
 
     if topic == 'from/bot/command' and text == 'register':
-        announce_commands(client)
+        announce_commands()
 
         return
 
@@ -70,6 +104,7 @@ def on_message(client, userdata, message):
     nick    = parts[3] if len(parts) >= 4 else 'jemoeder'
 
     try:
+        # why?! TODO
         channel_nr = channels.index(channel)
 
     except ValueError as ve:
@@ -79,33 +114,46 @@ def on_message(client, userdata, message):
     if text != '' and text[0] == prefix:
         command = text[1:].split(' ')[0]
 
-    if channel in channels:
-        if len(parts) >= 4 and parts[3] == 'topic':
-            topics[channel_nr] = text
+    print(channel, command, text)
 
-            print(f'Someone set {channel} to {topics[channel_nr]}')
+    if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
+        if len(parts) >= 4 and parts[3] == 'topic':
+            set_topic(channel_nr, text)
+
+            log(f'{nick} set {channel} to {text} ({topics[channel_nr]})')
 
         elif command == 'cleartopic':
-            set_topic(channel, '')
+            set_topic(channel_nr, '')
 
         elif command == 'settopic':
             new_topic = text.split()
 
             if len(new_topic) > 1:
-                set_topic(channel, ' '.join(new_topic[1:]))
+                set_topic(channel_nr, ' '.join(new_topic[1:]))
 
         elif command == 'addtopic':
-            new_topic = text.split()
+            try:
+                new_topic = text.split()
 
-            if len(new_topic) > 1:
-                if topics[channel_nr] != '':
-                    topics[channel_nr] += ' | '
+                if len(new_topic) > 1:
+                    text = ('' if topics[channel_nr] == None else topics[channel_nr]).strip()
 
-                topics[channel_nr] += f'{" ".join(new_topic[1:])}'
+                    if text != '' and text[-1] != '|':
+                        text += ' | '
 
-                # print(topics[channel_nr])
+                    elif text != '' and text[-1] == '|':
+                        text += ' '
 
-                set_topic(channel, topics[channel_nr])
+                    text += f'{" ".join(new_topic[1:])}'
+
+                    # log(text)
+
+                    print(f'adding "{new_topic}" to topic: {text}')
+
+                    set_topic(channel_nr, text)
+
+            except Exception as e:
+                log(f'addtopic error: {e}, line number: {e.__traceback__.tb_lineno}')
 
         elif command == 'deltopic':
             try:
@@ -128,40 +176,64 @@ def on_message(client, userdata, message):
                     for i in range(0, len(parts)):
                         parts[i] = parts[i].strip()
 
-                    topics[channel_nr] = ' | '.join(parts)
+                    text =  ' | '.join(parts).strip()
 
-                    set_topic(channel, topics[channel_nr])
+                    if text[-1] != '|':
+                        text += ' |'
+
+                    print(f'set topic after del to "{text}"')
+
+                    set_topic(channel_nr, text)
 
                 else:
-                    print('deltopic', input_, topics[channel_nr])
+                    log('deltopic', input_, topics[channel_nr])
 
             except Exception as e:
-                print(f'deltopic error: {e}, line number: {e.__traceback__.tb_lineno}')
+                log(f'deltopic error: {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
+    global first
+
+    try:
         client.subscribe(f'{topic_prefix}from/irc/#')
 
         client.subscribe(f'{topic_prefix}from/bot/command')
 
-        client.subscribe(f'space/statedigit')
+        client.subscribe(f'space/state')
 
-def announce_thread(client):
+    except Exception as e:
+        log(f'on_connect error: {e}, line number: {e.__traceback__.tb_lineno}')
+
+    first = True
+
+def announce_thread():
+    global first
+    global mqtt_server
+
     while True:
         try:
-            announce_commands(client)
+            announce_commands()
+
+            if first:
+                first = False
+
+                target_topic = f'{topic_prefix}to/bot/request'
+
+                print(f'requesting topics ({target_topic})')
+
+                publish.single(target_topic, hostname=mqtt_server, payload='topics')
 
             time.sleep(4.1)
 
         except Exception as e:
-            print(f'Failed to announce: {e}')
+            log(f'Failed to announce: {e}')
 
-client = mqtt.Client()
-client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
+client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
-t = threading.Thread(target=announce_thread, args=(client,))
+t = threading.Thread(target=announce_thread)
 t.start()
 
 client.loop_forever()

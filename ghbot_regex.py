@@ -9,6 +9,9 @@ import sqlite3
 import threading
 import time
 
+import socket
+import sys
+
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'test', 'nurdsbofh', 'nurds']
@@ -33,7 +36,7 @@ def on_message(client, userdata, message):
         if parts[-1] == 'topic':
             return
 
-        if channel in channels:
+        if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
             if len(text) == 0:
                 return
 
@@ -82,12 +85,11 @@ def on_message(client, userdata, message):
         print(f'{e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        client.subscribe(f'{topic_prefix}from/irc/#')
+    client.subscribe(f'{topic_prefix}from/irc/#')
 
-client = mqtt.Client()
-client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
+client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 client.loop_forever()

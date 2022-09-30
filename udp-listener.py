@@ -8,6 +8,7 @@ import paho.mqtt.client as mqtt
 import socket
 import threading
 import time
+import sys
 
 mqtt_server  = 'mqtt.vm.nurd.space'   # TODO: hostname of MQTT server
 topic_prefix = 'GHBot/'  # leave this as is
@@ -32,7 +33,7 @@ def listener(client):
     except Exception as e:
         print(e)
 
-client = mqtt.Client()
+client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 t = threading.Thread(target=listener, args=(client,))
