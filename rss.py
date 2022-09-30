@@ -120,7 +120,10 @@ def update_feed(client, name):
     feed_lock.acquire()
 
     feeds[name]['tree']       = tree
-    feeds[name]['item_index'] = 0
+
+    if not 'item_index' in feeds[name] or len(tree['items']) < feeds[name]['item_index']:
+        feeds[name]['item_index'] = 0
+
     feeds[name]['last_poll']  = now
 
     feed_lock.release()
