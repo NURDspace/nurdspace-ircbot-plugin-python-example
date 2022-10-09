@@ -89,28 +89,40 @@ def on_message(client, userdata, message):
 
         if command == 'at' and tokens[0][0] == prefix and len(tokens) >= 3:
             try:
-                input_    = tokens[1].replace('/', '-')
-                input_idx = 2
+                if tokens[1][0] == '+':  # offset from now
+                    final_d = datetime.datetime.now()
 
-                final_d   = None
+                    what = tokens[1][1:]
 
-                while True:
-                    d = dateparser.parse(input_)
+                    if what[-1] == 'h':  # hours
+                        final_d += datetime.timedelta(hours=int(what[0:-1]))
 
-                    if d == None:
-                        break
+                    else:
+                        final_d += datetime.timedelta(minutes=int(what))
 
-                    final_d    = d
+                else:  # let's see what thsi is
+                    input_    = tokens[1].replace('/', '-')
+                    input_idx = 2
 
-                    input_    += ' ' + tokens[input_idx]
-                    input_idx += 1
+                    final_d   = None
+
+                    while input_idx < len(tokens):
+                        d = dateparser.parse(input_)
+
+                        if d == None:
+                            break
+
+                        final_d    = d
+
+                        input_    += ' ' + tokens[input_idx]
+                        input_idx += 1
 
                 if final_d == None:
                     client.publish(response_topic, f'Cannot parse time-string {input_}')
 
                     return
 
-                what       = ' '.join(tokens[1:])
+                what       = ' '.join(tokens)
 
                 event_time = final_d.timestamp()
 
@@ -127,7 +139,7 @@ def on_message(client, userdata, message):
 
                     ts_string    = final_d.strftime('%Y-%m-%d %H:%M:%S (%A)')
 
-                    reminder_str = f'Reminder ({ts_string}): {what}'
+                    reminder_str = f'Reminder ({ts_string}, {nick}): {what}'
 
                     client.publish(response_topic, f'Reminder stored for {ts_string}')
 
