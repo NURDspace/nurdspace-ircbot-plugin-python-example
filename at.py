@@ -82,6 +82,7 @@ def on_message(client, userdata, message):
 
     if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
         response_topic = f'{topic_prefix}to/irc/{channel}/notice'
+        notify_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
         tokens  = text.split()
 
@@ -145,7 +146,7 @@ def on_message(client, userdata, message):
 
                     sleep_t      = event_time - t_now
 
-                    t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
+                    t = threading.Thread(target=sleeper, args=(sleep_t, notify_topic, reminder_str))
                     t.daemon = True
                     t.start()
 
@@ -183,13 +184,13 @@ def start_reminder_threads(con):
         sleep_t    = next_event - now
 
         if sleep_t >= 0:
-            response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+            notify_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
 
             ts_str         = row[1]
 
             reminder_str   = f'Reminder ({ts_str}): {row[2]}'
 
-            t = threading.Thread(target=sleeper, args=(sleep_t, response_topic, reminder_str))
+            t = threading.Thread(target=sleeper, args=(sleep_t, notify_topic, reminder_str))
             t.daemon = True
             t.start()
 

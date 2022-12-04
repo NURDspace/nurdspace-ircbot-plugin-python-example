@@ -28,7 +28,7 @@ def log(str_):
         fh.write(f'{str_}\n')
         fh.close()
 
-        print(str_)
+        #print(str_)
 
     except Exception as e:
         print(f'log error: {e}, line number: {e.__traceback__.tb_lineno}')
@@ -55,8 +55,8 @@ def set_topic(channel_nr, text):
 
     text = 'Space is ' + ('OPEN' if last_state.lower() == 'true' else 'closed') + ' | ' + text
 
-    print('OLD', topics[channel_nr])
-    print('NEW', text)
+    #print('OLD', topics[channel_nr])
+    #print('NEW', text)
 
     if text != topics[channel_nr]:
         client.publish(f'{topic_prefix}to/irc/{channels[channel_nr]}/topic', text)
@@ -69,7 +69,7 @@ def on_message(client, userdata, message):
 
     text = message.payload.decode('utf-8')
 
-    print(message.topic, text)
+    #print(message.topic, text)
 
     if message.topic == 'space/state':
         try:
@@ -114,7 +114,7 @@ def on_message(client, userdata, message):
     if text != '' and text[0] == prefix:
         command = text[1:].split(' ')[0]
 
-    print(channel, command, text)
+    #print(channel, command, text)
 
     if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
         if len(parts) >= 4 and parts[3] == 'topic':
@@ -219,7 +219,7 @@ def announce_thread():
 
                 target_topic = f'{topic_prefix}to/bot/request'
 
-                print(f'requesting topics ({target_topic})')
+                #print(f'requesting topics ({target_topic})')
 
                 publish.single(target_topic, hostname=mqtt_server, payload='topics')
 

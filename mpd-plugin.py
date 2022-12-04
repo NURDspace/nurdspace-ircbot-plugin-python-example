@@ -29,7 +29,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=next|descr=Skip to the next track.')
     client.publish(target_topic, 'cmd=pause|descr=Stops the music, or unstops it.')
     client.publish(target_topic, 'cmd=prev|descr=Skip to the previous track.')
-    client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
+#    client.publish(target_topic, 'cmd=np|descr=What is playing right now?')
     client.publish(target_topic, 'cmd=clearpl|descr=Clear the current playlist.')
     client.publish(target_topic, 'cmd=mpdsearch|descr=Search for a song, by title keywords.')
     client.publish(target_topic, 'cmd=mpdadd|descr=Add a song(s) to the current play queue. Searches by title keyword(s).')
@@ -137,7 +137,10 @@ def on_message(client, userdata, message):
             if command == 'next':
                 mpd_client.next()
 
-                client.publish(response_topic, f'Skipped {playing}')
+                now_current_song = mpd_client.currentsong()
+                now_playing = gen_song_name(now_current_song)
+
+                client.publish(response_topic, f'Skipped {playing}, now playing: {now_playing}')
 
             elif command == 'prev':
                 mpd_client.previous()

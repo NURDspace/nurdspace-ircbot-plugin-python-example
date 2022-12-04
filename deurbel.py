@@ -41,11 +41,12 @@ def on_message(client, userdata, message):
         return
 
     # space/door/front {"name":"tahtkev","date":"zondag 10 juli 2022","time":"15:29:36","msg":"Toegang verleend - met kaart","cardnr":666}
-    if message.topic == 'space/door/front':
+    #if message.topic == 'space/door/front':
+    if message.topic == 'doordeamon/LiveEvents':
         try:
             j = json.loads(text)
 
-            msg = f'--- {j["name"]} opened the door ---'
+            msg = f'--- {j["userName"]} opened the door ---'
 
             for channel in channels:
                 announce_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
@@ -98,7 +99,7 @@ def on_connect(client, userdata, flags, rc):
 
     client.subscribe(f'deurbel')
 
-    client.subscribe(f'space/door/front')
+    client.subscribe(f'doordeamon/LiveEvents')
 
 def announce_thread(client):
     while True:

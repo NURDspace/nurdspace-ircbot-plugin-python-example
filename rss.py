@@ -78,7 +78,7 @@ def update_feed(client, name):
     if now - feeds[name]['last_poll'] < feeds[name]['interval'] and feeds[name]['tree'] != None:
         return
 
-    print(f'Update content for {name} at {time.ctime()} from {feeds[name]["url"]}')
+    #print(f'Update content for {name} at {time.ctime()} from {feeds[name]["url"]}')
 
     req = urllib.request.Request(
             feeds[name]['url'], 
@@ -180,7 +180,7 @@ def on_message(client, userdata, message):
                 return
 
             command = tokens[0][1:]
-            print(command)
+            #print(command)
 
             if command == 'addrss':
                 if len(tokens) == 3:
