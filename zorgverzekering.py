@@ -56,6 +56,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=profanity|descr=Check if a text contains profanity')
     client.publish(target_topic, 'cmd=random|descr=Return a random number')
     client.publish(target_topic, 'cmd=love|descr=Who is a good boy! (m/v/x)')
+    client.publish(target_topic, 'cmd=op|descr=Give the requester operator-rights')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -415,6 +416,12 @@ def on_message(client, userdata, message):
 
         elif command == 'love':
             client.publish(response_topic_pm, f'%m loves you all')
+
+        elif command == 'op':
+            if '!' in nick:
+                nick = nick[0:nick.find('!')]
+
+            client.publish(f'{topic_prefix}to/irc/{channel}/mode', f'+o {nick}')
 
 def on_connect(client, userdata, flags, rc):
     client.subscribe(f'{topic_prefix}from/irc/#')
