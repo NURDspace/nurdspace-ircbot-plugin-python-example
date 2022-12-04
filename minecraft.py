@@ -95,6 +95,50 @@ def announce_thread(client):
         except Exception as e:
             print(f'Failed to announce: {e}')
 
+def poller_thread(client):
+    people = set()
+
+    while True:
+        try:
+            server  = JavaServer(mc_server)
+
+            latency = server.ping()
+
+            query   = server.query()
+
+            new_people = []
+
+            for user in query.players.names:
+                if not user in people:
+                    new_people.append(user)
+
+                    people.add(user)
+
+            if len(new_people) > 0:
+                response_topic = f'{topic_prefix}to/irc/nurds/privmsg'
+
+                msg = f'New people in the minecraft server: {", ".join(new_people)}'
+
+                client.publish(response_topic, msg)
+
+                UDP_IP = 'ticker-proxy.vm.nurd.space'  # ticker proxy
+                UDP_PORT = 5001
+
+                msg = value.strip()
+                msg = msg.replace('$i$', '')
+                msg = msg.encode('utf-8', 'ignore')
+
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+                s.sendto(msg, (UDP_IP, UDP_PORT))
+
+                s.close()
+
+            time.sleep(2.5)
+
+        except Exception as e:
+            print(f'Failed to announce: {e}')
+
 client = mqtt.Client(f'{socket.gethostname()}_{sys.argv[0]}', clean_session=False)
 client.on_message = on_message
 client.on_connect = on_connect
@@ -102,5 +146,8 @@ client.connect(mqtt_server, port=1883, keepalive=4, bind_address="")
 
 t = threading.Thread(target=announce_thread, args=(client,))
 t.start()
+
+t2 = threading.Thread(target=poller_thread, args=(client,))
+t2.start()
 
 client.loop_forever()
