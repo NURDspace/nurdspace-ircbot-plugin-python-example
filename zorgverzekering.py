@@ -57,6 +57,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=random|descr=Return a random number')
     client.publish(target_topic, 'cmd=love|descr=Who is a good boy! (m/v/x)')
     client.publish(target_topic, 'cmd=op|descr=Give the requester operator-rights')
+    client.publish(target_topic, 'cmd=sterretjes|descr=Sterretjes')
 
 def parse_to_rgb(json):
     if "value" in json:
@@ -75,7 +76,8 @@ def get_rgb():
 
 def cmd_wau_temp(client, response_topic):
     try:
-        r = requests.get('http://met.wur.nl/veenkampen/data/C_current.txt', timeout=10)
+        # r = requests.get('http://met.wur.nl/veenkampen/data/C_current.txt', timeout=10)
+        r = requests.get('https://veenkampen.nl/data/C_current.txt', timeout=10)
 
         thermopage = r.content.decode('ascii').split()
 
@@ -422,6 +424,9 @@ def on_message(client, userdata, message):
                 nick = nick[0:nick.find('!')]
 
             client.publish(f'{topic_prefix}to/irc/{channel}/mode', f'+o {nick}')
+
+        elif command == 'sterretjes':
+            client.publish(response_topic, '*' * 4096)
 
 def on_connect(client, userdata, flags, rc):
     client.subscribe(f'{topic_prefix}from/irc/#')

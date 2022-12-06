@@ -205,6 +205,9 @@ def on_message(client, userdata, message):
                         else:
                             output += ' / '
 
+                        color_index = (abs(hash(row[0]) * 9) % 13) + 2
+                        output += f'\3{color_index}'
+
                         output += f'[{row[1]}]: {row[0]} ({row[2]})'
 
                     if output != None:

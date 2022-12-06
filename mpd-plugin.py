@@ -140,7 +140,7 @@ def on_message(client, userdata, message):
                 now_current_song = mpd_client.currentsong()
                 now_playing = gen_song_name(now_current_song)
 
-                client.publish(response_topic, f'Skipped {playing}, now playing: {now_playing}')
+                client.publish(response_topic, f'Skipped \3{4}{playing}\3, now playing: \3{3}{now_playing}\3')
 
             elif command == 'prev':
                 mpd_client.previous()

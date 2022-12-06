@@ -159,6 +159,25 @@ def on_message(client, userdata, message):
             except Exception as e:
                 client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
 
+        elif command == 'at' and tokens[0][0] == prefix and len(tokens) <= 2:
+            try:
+                cur = con.cursor()  # TODO select on channel
+                cur.execute('SELECT channel, `when` AS "datetime [timestamp]", what, datetime("now", "localtime") FROM at WHERE `when` > datetime("now", "localtime") ORDER BY `when` ASC LIMIT 1')
+                rows = cur.fetchall()
+                cur.close()
+
+                if rows == None or len(rows) == 0:
+                    client.publish(response_topic, 'Nothink')
+
+                elif len(tokens) == 2 and tokens[1] == '-v':
+                    client.publish(response_topic, f'First following event: {rows[0][1]} ({rows[0][2]} in {rows[0][0]})')
+
+                else:
+                    client.publish(response_topic, f'First following event: {rows[0][1]}')
+
+            except Exception as e:
+                client.publish(response_topic, f'Failed to perform "at" without time-vector: {e}, line number: {e.__traceback__.tb_lineno}')
+
         elif command == 'date':
             client.publish(response_topic, f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S (Bertrik/buZz dat is %A)")}')
 
