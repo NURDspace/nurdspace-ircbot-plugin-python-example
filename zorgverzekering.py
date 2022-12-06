@@ -50,7 +50,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=regen|descr=Regenvoorspelling voor omgeving Wageningen')
     client.publish(target_topic, 'cmd=@|descr=What is the titel of the last URL posted')
 #    client.publish(target_topic, 'cmd=reken|descr=Calculate a simple formula')
-    client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte, 2: gewicht.')
+    client.publish(target_topic, 'cmd=bmi|descr=Bereken de BMI. Parameter 1: lengte (in meters), 2: gewicht (in kg).')
     client.publish(target_topic, 'cmd=qanime|descr=Anime quote')
     client.publish(target_topic, 'cmd=dogfact|descr=Dog facts')
     client.publish(target_topic, 'cmd=profanity|descr=Check if a text contains profanity')
