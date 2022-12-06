@@ -130,7 +130,7 @@ def cmd_wau_temp(client, response_topic):
         if windspeed>28.4 and windspeed<= 32.6: windbeaufort = '11'
         if windspeed>32.6: windbeaufort = '12'
 
-        client.publish(response_topic, temp+' C, '+sunshine+' W/m2 sun, '+humid+'% humidity, '+windbeaufort+' bft ('+windspeedstring+' m/s) '+winddir+', '+precip+' mm precipitation, '+pressure+' kPa.')
+        client.publish(response_topic, temp+' C, '+sunshine+' W/m2 sun, '+humid+'% humidity, '+windbeaufort+' bft ('+windspeedstring+' m/s) '+winddir+', '+precip+' mm precipitation, '+pressure+f' kPa ({data[0][1:-1]} {data[1]})')
 
     except Exception as e:
         client.publish(response_topic, f'Exception during "wau-temp": {e}, line number: {e.__traceback__.tb_lineno}')
