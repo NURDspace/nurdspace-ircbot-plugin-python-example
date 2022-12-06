@@ -242,7 +242,11 @@ def on_message(client, userdata, message):
                         if '!' in who:
                             who = who[:who.find('!')]
 
-                        output += f'\2{reason}\x0f ({who}/{count})'
+                        if reason != '':
+                            output += f'\2{reason}\x0f ({who}/{count})'
+
+                        else:
+                            output += f'\x1dno reason given\x0f ({who}/{count})'
 
                     print(output)
                     if output == '':
@@ -291,7 +295,7 @@ def on_message(client, userdata, message):
 
                 hash_index = org_text.find('#')
 
-                reason = org_text[hash_index + 1:].strip() if hash_index != -1 else None
+                reason = org_text[hash_index + 1:].strip() if hash_index != -1 else ''
 
                 try:
                     cur = con.cursor()
@@ -302,8 +306,7 @@ def on_message(client, userdata, message):
 
                     cur.execute(query2, (channel.lower(), text.lower(), nick.lower(), count, count))
 
-                    if reason != None:
-                        cur.execute(query3, (channel.lower(), text.lower(), nick.lower(), count, reason))
+                    cur.execute(query3, (channel.lower(), text.lower(), nick.lower(), count, reason))
 
                     cur.execute('COMMIT')
 
