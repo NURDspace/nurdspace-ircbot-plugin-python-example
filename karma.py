@@ -31,6 +31,31 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=rkarma|descr=Show reverse karma of a word/entity.')
     client.publish(target_topic, 'cmd=topkarma|descr=Show highest valued word/entity.')
     client.publish(target_topic, 'cmd=toprkarma|descr=Top karma givers.')
+    client.publish(target_topic, 'cmd=whykarma|descr=Why did people give karma for a word/entity.')
+
+def find_subject(text):
+    if text[0] == '(':
+        end = text.find(')')
+
+        if end != -1:
+            space = text.find(' ', end)
+
+            if space != -1:
+                text = text[1:end] + text[end + 1:space]
+
+            else:
+                text = text[1:end] + text[end + 1:]
+
+        else:
+            return None
+
+    else:
+        space = text.find(' ')
+
+        if space != -1:
+            text = text[0:space]
+
+    return text
 
 def on_message(client, userdata, message):
     global prefix
@@ -184,32 +209,63 @@ def on_message(client, userdata, message):
 
                 cur.close()
 
+            elif command == 'whykarma':
+                space = text.find(' ')
+
+                if space == -1:
+                    client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'whykarma for what?')
+                    return
+
+                word = find_subject(text[space + 1:])
+
+                if word == None:
+                    client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'For what?')
+                    return
+
+                cur = con.cursor()
+
+                try:
+                    query = 'SELECT who, SUM(count), reason FROM karma_history WHERE channel=? AND word=? GROUP BY who, reason ORDER BY `when` DESC'
+
+                    cur.execute(query, (channel.lower(), word.lower()))
+
+                    output = ''
+
+                    for row in cur.fetchall():
+                        if output != '':
+                            output += ', '
+
+                        who    = row[0]
+                        count  = row[1]
+                        reason = row[2]
+
+                        if '!' in who:
+                            who = who[:who.find('!')]
+
+                        output += f'\2{reason}\x0f ({who}/{count})'
+
+                    print(output)
+                    if output == '':
+                        client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'"{word}" has no karma (yet)')
+
+                    else:
+                        client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'Why: {output}')
+
+                except Exception as e:
+                    print(f'Exception: {e}')
+
+                cur.close()
+
         else:
             if len(text) == 0:
                 return
 
-            if text[0] == '(':
-                end = text.find(')')
+            org_text = text
 
-                if end != -1:
-                    space = text.find(' ', end)
+            text = find_subject(text)
 
-                    if space != -1:
-                        text = text[1:end] + text[end + 1:space]
-
-                    else:
-                        text = text[1:end] + text[end + 1:]
-
-                    print('get', text)
-
-                else:
-                    return
-
-            else:
-                space = text.find(' ')
-
-                if space != -1:
-                    text = text[0:space]
+            if text == None:
+                return
 
             count = 0
 
@@ -231,6 +287,12 @@ def on_message(client, userdata, message):
 
                 query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
 
+                query3 = "INSERT INTO karma_history(`when`, channel, word, who, count, reason) VALUES(strftime('%Y-%m-%d %H:%M:%S','now'), ?, ?, ?, ?, ?)"
+
+                hash_index = org_text.find('#')
+
+                reason = org_text[hash_index + 1:].strip() if hash_index != -1 else None
+
                 try:
                     cur = con.cursor()
 
@@ -239,6 +301,9 @@ def on_message(client, userdata, message):
                     cur.execute(query1, (channel.lower(), text.lower(), count, count))
 
                     cur.execute(query2, (channel.lower(), text.lower(), nick.lower(), count, count))
+
+                    if reason != None:
+                        cur.execute(query3, (channel.lower(), text.lower(), nick.lower(), count, reason))
 
                     cur.execute('COMMIT')
 
@@ -262,12 +327,16 @@ def on_message(client, userdata, message):
 
                         cur.execute(query)
 
+                        query = 'CREATE TABLE karma_history(`when` datetime not null, channel text not null, word text not null, who text not null, count int not null, reason text not null)'
+
+                        cur.execute(query)
+
                         cur.close()
 
                         con.commit()
 
                     except Exception as e:
-                        print(f'Unexpected exception {e} while handling exception {oe}')
+                        print(f'Unexpected exception "{e}" while handling exception "{oe}"')
 
 def on_connect(client, userdata, flags, rc):
     try:
