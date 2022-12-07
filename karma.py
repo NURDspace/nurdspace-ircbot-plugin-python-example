@@ -227,7 +227,8 @@ def on_message(client, userdata, message):
                 try:
                     query = 'SELECT who, SUM(count), reason FROM karma_history WHERE channel=? AND word=? GROUP BY who, reason ORDER BY reason DESC, who, `when` DESC'
 
-                    cur.execute(query, (channel.lower(), word.lower()))
+                    #cur.execute(query, (channel.lower(), word.lower()))
+                    cur.execute(query, ('nurds', word.lower()))
 
                     output = ''
 
@@ -235,9 +236,6 @@ def on_message(client, userdata, message):
                     preason = None
 
                     for row in cur.fetchall():
-                        if output != '':
-                            output += ', '
-
                         who    = row[0]
                         count  = row[1]
                         reason = row[2]
@@ -262,6 +260,9 @@ def on_message(client, userdata, message):
 
                                     list_who += f'{entry}/{lreason[entry]}'
 
+                                if output != '':
+                                    output += ', '
+
                                 if preason != '':
                                     output += f'\2{preason}\x0f ({list_who})'
 
@@ -273,7 +274,23 @@ def on_message(client, userdata, message):
                             lreason = dict()
                             lreason[who] = count
 
-                    print(output)
+                    if preason != None:
+                        list_who = ''
+
+                        for entry in lreason:
+                            if list_who != '':
+                                list_who += ', '
+
+                            list_who += f'{entry}/{lreason[entry]}'
+
+                        if output != '':
+                            output += ', '
+
+                        if preason != '':
+                            output += f'\2{preason}\x0f ({list_who})'
+
+                        else:
+                            output += f'\x1dno reason given\x0f ({list_who})'
 
                     if output == '':
                         client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'"{word}" has no karma (yet)')
