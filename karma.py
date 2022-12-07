@@ -227,8 +227,7 @@ def on_message(client, userdata, message):
                 try:
                     query = 'SELECT who, SUM(count), reason FROM karma_history WHERE channel=? AND word=? GROUP BY who, reason ORDER BY reason DESC, who, `when` DESC'
 
-                    #cur.execute(query, (channel.lower(), word.lower()))
-                    cur.execute(query, ('nurds', word.lower()))
+                    cur.execute(query, (channel.lower(), word.lower()))
 
                     output = ''
 
