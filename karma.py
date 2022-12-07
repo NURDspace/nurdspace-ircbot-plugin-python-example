@@ -225,11 +225,14 @@ def on_message(client, userdata, message):
                 cur = con.cursor()
 
                 try:
-                    query = 'SELECT who, SUM(count), reason FROM karma_history WHERE channel=? AND word=? GROUP BY who, reason ORDER BY `when` DESC'
+                    query = 'SELECT who, SUM(count), reason FROM karma_history WHERE channel=? AND word=? GROUP BY who, reason ORDER BY reason, `when` DESC'
 
                     cur.execute(query, (channel.lower(), word.lower()))
 
                     output = ''
+
+                    lreason = dict()
+                    preason = None
 
                     for row in cur.fetchall():
                         if output != '':
@@ -242,13 +245,36 @@ def on_message(client, userdata, message):
                         if '!' in who:
                             who = who[:who.find('!')]
 
-                        if reason != '':
-                            output += f'\2{reason}\x0f ({who}/{count})'
+                        if reason == preason:
+                            if who in lreason:
+                                lreason[who] += count
+
+                            else:
+                                lreason[who] = count
 
                         else:
-                            output += f'\x1dno reason given\x0f ({who}/{count})'
+                            if preason != None:
+                                list_who = ''
+
+                                for entry in lreason:
+                                    if list_who != '':
+                                        list_who += ', '
+
+                                    list_who += f'{entry}/{lreason[entry]}'
+
+                                if preason != '':
+                                    output += f'\2{preason}\x0f ({list_who})'
+
+                                else:
+                                    output += f'\x1dno reason given\x0f ({list_who})'
+
+                            preason = reason
+
+                            lreason = dict()
+                            lreason[who] = count
 
                     print(output)
+
                     if output == '':
                         client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'"{word}" has no karma (yet)')
 
