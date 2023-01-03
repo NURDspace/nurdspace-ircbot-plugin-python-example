@@ -50,7 +50,7 @@ con.commit()
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "DD-MM-YYYY" or "HH:MM:SS" or those two combined)')
+    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "YYYY-MM-DD" or "HH:MM:SS" or those two combined, also +Xh works: that will make it wait for X hours (m=minutes, s=seconds, d=days))')
     client.publish(target_topic, 'cmd=date|descr=Emit current date/time')
 
 def sleeper(dt, response_topic, txt):
@@ -97,6 +97,15 @@ def on_message(client, userdata, message):
 
                     if what[-1] == 'h':  # hours
                         final_d += datetime.timedelta(hours=int(what[0:-1]))
+
+                    elif what[-1] == 'm':  # minutes
+                        final_d += datetime.timedelta(minutes=int(what[0:-1]))
+
+                    elif what[-1] == 's':  # seconds
+                        final_d += datetime.timedelta(seconds=int(what[0:-1]))
+
+                    elif what[-1] == 'd':  # days
+                        final_d += datetime.timedelta(days=int(what[0:-1]))
 
                     else:
                         final_d += datetime.timedelta(minutes=int(what))
@@ -157,6 +166,7 @@ def on_message(client, userdata, message):
                 con.commit()
 
             except Exception as e:
+                print(f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
                 client.publish(response_topic, f'Failed to remember reminder: {e}, line number: {e.__traceback__.tb_lineno}')
 
         elif command == 'at' and tokens[0][0] == prefix and len(tokens) <= 2:
