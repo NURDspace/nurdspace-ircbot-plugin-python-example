@@ -52,6 +52,7 @@ def announce_commands(client):
 
     client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "YYYY-MM-DD" or "HH:MM:SS" or those two combined, also +Xh works: that will make it wait for X hours (m: minutes, s: seconds, d: days))')
     client.publish(target_topic, 'cmd=nextat|descr=Show 10 events that shall happen in the future')
+    client.publish(target_topic, 'cmd=delat|descr=Delete an item by number (see "nextat")')
     client.publish(target_topic, 'cmd=date|descr=Emit current date/time')
 
 def sleeper(dt, response_topic, txt):
@@ -148,11 +149,13 @@ def on_message(client, userdata, message):
                 try:
                     cur.execute("INSERT INTO at(channel, `when`, what) VALUES(?, DATETIME(?, 'unixepoch', 'localtime'), ?)", (channel, event_time, what))
 
+                    id_ = cur.lastrowid
+
                     ts_string    = final_d.strftime('%Y-%m-%d %H:%M:%S (%A)')
 
                     reminder_str = f'Reminder ({ts_string}, {nick}): {what}'
 
-                    client.publish(response_topic, f'Reminder stored for {ts_string}')
+                    client.publish(response_topic, f'Reminder stored for {ts_string} with number {id_}')
 
                     sleep_t      = event_time - t_now
 
@@ -192,16 +195,34 @@ def on_message(client, userdata, message):
         elif command == 'date':
             client.publish(response_topic, f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S (Bertrik/buZz dat is %A)")}')
 
+        elif command == 'delat' and len(tokens) == 2:
+            cur = con.cursor()
+
+            try:
+                cur.execute("DELETE FROM at WHERE channel=? AND nr=? LIMIT 1", (channel, tokens[1]))
+
+                if cur.rowcount:
+                    client.publish(response_topic, f'Deleted an entry for {tokens[1]}')
+
+                else:
+                    client.publish(response_topic, f"Did not delete an entry for {tokens[1]} because maybe it does not exist? Don't know.")
+
+            except Exception as e:
+                client.publish(response_topic, f'Failed to delat {e}, line number: {e.__traceback__.tb_lineno}')
+
+            cur.close()
+            con.commit()
+
         elif command == 'nextat':
             cur = con.cursor()
 
             try:
-                cur.execute("select `when`, what from at where `when` > datetime() and channel=? order by `when`", (channel,))
+                cur.execute("select nr, `when`, what from at where `when` > datetime() and channel=? order by `when`", (channel,))
 
                 rows = []
 
                 for row in cur:
-                    rows.append(f'{row[0]}: {row[1]}')
+                    rows.append(f'{row[0]},{row[1]}: {row[2]}')
 
                 client.publish(response_topic, 'Reminders: ' + (', '.join(rows)))
 
