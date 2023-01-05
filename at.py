@@ -50,7 +50,8 @@ con.commit()
 def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
-    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "YYYY-MM-DD" or "HH:MM:SS" or those two combined, also +Xh works: that will make it wait for X hours (m=minutes, s=seconds, d=days))')
+    client.publish(target_topic, 'cmd=at|descr=Store a reminder (either "YYYY-MM-DD" or "HH:MM:SS" or those two combined, also +Xh works: that will make it wait for X hours (m: minutes, s: seconds, d: days))')
+    client.publish(target_topic, 'cmd=nextat|descr=Show 10 events that shall happen in the future')
     client.publish(target_topic, 'cmd=date|descr=Emit current date/time')
 
 def sleeper(dt, response_topic, txt):
@@ -190,6 +191,23 @@ def on_message(client, userdata, message):
 
         elif command == 'date':
             client.publish(response_topic, f'{datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S (Bertrik/buZz dat is %A)")}')
+
+        elif command == 'nextat':
+            cur = con.cursor()
+
+            try:
+                cur.execute("select `when`, what from at where `when` > datetime() and channel=? order by `when`", (channel,))
+
+                rows = []
+
+                for row in cur:
+                    rows.append(f'{row[0]}: {row[1]}')
+
+                client.publish(response_topic, 'Reminders: ' + (', '.join(rows)))
+
+            except Exception as e:
+                client.publish(response_topic, f'Failed to nextat: {e}, line number: {e.__traceback__.tb_lineno}')
+
 
 def start_reminder_threads(con):
     global db_file

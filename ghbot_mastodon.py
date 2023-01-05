@@ -74,7 +74,7 @@ def on_message(client, userdata, message):
     command = text[1:].split(' ')[0]
 
     if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
-        response_topic = f'{topic_prefix}to/irc/{channel}/privmsg'
+        response_topic = f'{topic_prefix}to/irc/{channel}/notice'
 
         if command == 'mastodon':
             try:

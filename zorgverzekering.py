@@ -56,7 +56,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=profanity|descr=Check if a text contains profanity')
     client.publish(target_topic, 'cmd=random|descr=Return a random number')
     client.publish(target_topic, 'cmd=love|descr=Who is a good boy! (m/v/x)')
-    client.publish(target_topic, 'cmd=op|descr=Give the requester operator-rights')
+    client.publish(target_topic, 'cmd=op|descr=Give the requester operator-rights OR the nick given as an (optional) parameter')
     client.publish(target_topic, 'cmd=sterretjes|descr=Sterretjes')
 
 def parse_to_rgb(json):
@@ -74,16 +74,37 @@ def get_rgb():
                 get_json("http://lichtsensor.dhcp.nurd.space/sensor/tcs34725_" + channel + "_channel"))
                 for channel in ["red", "green", "blue"]]
 
-def cmd_wau_temp(client, response_topic):
+def cmd_wau_temp(client, response_topic, verbose):
     try:
+        headers = { "User-Agent" : 'Mozilla/5.0 (Windows; U; Windows NT 6.1; zh-CN) AppleWebKit/533+ (KHTML, like Gecko)' }
         # r = requests.get('http://met.wur.nl/veenkampen/data/C_current.txt', timeout=10)
-        r = requests.get('https://veenkampen.nl/data/C_current.txt', timeout=10)
+        r = requests.get('https://veenkampen.nl/data/C_current.txt', timeout=10, headers=headers)
 
         thermopage = r.content.decode('ascii').split()
 
-        currentline = thermopage[-1]
+        line = 1
+
+        while line < len(thermopage):
+            checkline = thermopage[-line]
+
+            print(line, checkline)
+
+            if checkline[0] == '"':
+                break
+
+            line += 1
+
+        currentline = thermopage[-line]
+
+        while currentline[-1] == ',' and line > 1:
+            line -= 1
+            currentline += thermopage[-line]
+
+        print(currentline)
 
         data = currentline.split(',')
+
+        print(len(data), data)
 
 #        temp = str(round(float(data[2]),1))
         temp = data[2]
@@ -130,7 +151,11 @@ def cmd_wau_temp(client, response_topic):
         if windspeed>28.4 and windspeed<= 32.6: windbeaufort = '11'
         if windspeed>32.6: windbeaufort = '12'
 
-        client.publish(response_topic, temp+' C, '+sunshine+' W/m2 sun, '+humid+'% humidity, '+windbeaufort+' bft ('+windspeedstring+' m/s) '+winddir+', '+precip+' mm precipitation, '+pressure+f' kPa ({data[0][1:-1]} {data[1]})')
+        if verbose:
+            client.publish(response_topic, currentline.strip('\n').strip('\r'))
+
+        else:
+            client.publish(response_topic, temp+' C, '+sunshine+' W/m2 sun, '+humid+'% humidity, '+windbeaufort+' bft ('+windspeedstring+' m/s) '+winddir+', '+precip+' mm precipitation, '+pressure+f' kPa ({data[0][1:-1]} {data[1]})')
 
     except Exception as e:
         client.publish(response_topic, f'Exception during "wau-temp": {e}, line number: {e.__traceback__.tb_lineno}')
@@ -324,6 +349,8 @@ def on_message(client, userdata, message):
     # print(channel, nick, command, value)
 
     if channel in channels or (len(channel) >= 1 and channel[0] == '\\'):
+        parts   = text.split()
+
         command = text[1:].split(' ')[0]
 
         if command == 'zorgverzekering':
@@ -353,7 +380,7 @@ def on_message(client, userdata, message):
             client.publish(response_topic, 'Current hex color of zaal 1 is: ' + hexcolor)
 
         elif command == 'wau-temp':
-            cmd_wau_temp(client, response_topic)
+            cmd_wau_temp(client, response_topic, '-v' in text)
 
         elif command == 'allot':
             cmd_allot(client, response_topic, value)
@@ -420,10 +447,12 @@ def on_message(client, userdata, message):
             client.publish(response_topic_pm, f'%m loves you all')
 
         elif command == 'op':
-            if '!' in nick:
-                nick = nick[0:nick.find('!')]
+            n = parts[1] if len(parts) > 1 else nick
 
-            client.publish(f'{topic_prefix}to/irc/{channel}/mode', f'+o {nick}')
+            if '!' in n:
+                n = n[0:n.find('!')]
+
+            client.publish(f'{topic_prefix}to/irc/{channel}/mode', f'+o {n}')
 
         elif command == 'sterretjes':
             client.publish(response_topic, '*' * 4096)

@@ -32,6 +32,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=topkarma|descr=Show highest valued word/entity.')
     client.publish(target_topic, 'cmd=toprkarma|descr=Top karma givers.')
     client.publish(target_topic, 'cmd=whykarma|descr=Why did people give karma for a word/entity.')
+    client.publish(target_topic, 'cmd=karmastats|descr=Use without a word/ent. for global stats or with word/ent and an optional -v.')
 
 def find_subject(text):
     if text[0] == '(':
@@ -208,6 +209,30 @@ def on_message(client, userdata, message):
                     print(f'Exception: {e}')
 
                 cur.close()
+
+            elif command == 'karmastats':
+                verbose = '-v' in tokens
+
+                word = find_subject(text)
+
+                cur = con.cursor()
+
+                # TODO
+                if word != None:
+                    output = f'Statistics for \"{word}\": '
+
+                    query = 'SELECT who, SUM(count) AS count, COUNT(*) AS n FROM karma_history WHERE channel=? AND word=? GROUP BY who ORDER BY count DESC LIMIT 1'
+                    cur.execute(query, (channel.lower(), word.lower()))
+                    result = cur.fetchone()
+
+                    output += f'{result[0]} added {result[1]} in {result[2]} steps'
+
+                else:
+                    pass
+
+                cur.close()
+
+                client.publish(f'{topic_prefix}to/irc/{channel}/notice', output)
 
             elif command == 'whykarma':
                 space = text.find(' ')

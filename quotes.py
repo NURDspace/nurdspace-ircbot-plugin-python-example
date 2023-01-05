@@ -42,7 +42,7 @@ def announce_commands(client):
     client.publish(target_topic, 'cmd=addquote|descr=Add a quote: addquote <nick> <text> -> returns a number')
     client.publish(target_topic, 'cmd=delquote|descr=Delete a quote by the number returned by addquote: delquote <number>')
     client.publish(target_topic, 'cmd=quote|descr=Show a random quote (for a [nick])')
-    client.publish(target_topic, 'cmd=quotealias|descr=Adds an alias to search for quotes for an irc-hostmask')
+    client.publish(target_topic, 'cmd=quotealias|descr=Adds an alias to search for quotes for an irc-hostmask (parameters: hostmask alias)')
     client.publish(target_topic, 'cmd=re|descr=Show something quoted from you')
     client.publish(target_topic, 'cmd=qs|descr=Search a quote by a search string')
 
