@@ -218,7 +218,18 @@ def cmd_at(client, response_topic):
 
     client.publish(response_topic, ', '.join(urls))
 
-def cmd_regen(client, response_topic):
+def sparkline(numbers):
+    # bar = u'\u9601\u9602\u9603\u9604\u9605\u9606\u9607\u9608'
+    bar = chr(9601) + chr(9602) + chr(9603) + chr(9604) + chr(9605) + chr(9606) + chr(9607) + chr(9608)
+    barcount = len(bar)
+
+    mn, mx = min(numbers), max(numbers)
+    extent = mx - mn
+    sparkline = ''.join(bar[min([barcount - 1, int((n - mn) / extent * barcount)])] for n in numbers)
+
+    return mn, mx, sparkline
+
+def cmd_regen(client, response_topic, verbose):
     try:
         r = requests.get('https://gpsgadget.buienradar.nl/data/raintext/?lat=51.97&lon=5.67', timeout=10)
         data = r.content.decode('ascii')
@@ -226,6 +237,8 @@ def cmd_regen(client, response_topic):
         client.publish(response_topic, r.content.decode('ascii'))
 
         result = []
+
+        values = []
 
         lines = data.split('\n')
 
@@ -242,6 +255,8 @@ def cmd_regen(client, response_topic):
                if mm >= 0.001:
                    result.append('%s: %.3fmm/u, ' % (parts[1], mm))
 
+               values.append(mm)
+
             except Exception as e:
                 client.publish(response_topic, f'Exception during "regen": {e}, line number: {e.__traceback__.tb_lineno}')
                 break
@@ -250,7 +265,12 @@ def cmd_regen(client, response_topic):
             client.publish(response_topic, f'Geen regen voorspeld door buienradar.nl')
 
         else:
-            client.publish(response_topic, f'Regenvoorspelling van buienradar.nl: {" ".join(result)}')
+            out = ' '.join(result)
+
+            if verbose:
+                out += ' ' + sparkline(values)[2]
+
+            client.publish(response_topic, f'Regenvoorspelling van buienradar.nl: {out}')
 
     except:
         client.publish(response_topic, f'Exception during "regen": {e}, line number: {e.__traceback__.tb_lineno}')
@@ -363,9 +383,13 @@ def on_message(client, userdata, message):
             client.publish(response_topic, 'NOOID!')
 
         elif command == 'choose':
-            choices = ' '.join(text.split(' ')[1:]).split(',')
+            try:
+                choices = ' '.join(text.split(' ')[1:]).split(',')
 
-            client.publish(response_topic, random.choice(choices).strip())
+                client.publish(response_topic, random.choice(choices).strip())
+
+            except Exception as e:
+                client.publish(response_topic, f'Exception during "choose": {e}, line number: {e.__traceback__.tb_lineno}')
 
         elif command == 'secondopinion':
             if len(choices) == 0:
@@ -392,7 +416,7 @@ def on_message(client, userdata, message):
             cmd_janee(client, response_topic)
 
         elif command == 'regen':
-            cmd_regen(client, response_topic)
+            cmd_regen(client, response_topic, '-v' in text)
 
         elif command == '@':
             cmd_at(client, response_topic)

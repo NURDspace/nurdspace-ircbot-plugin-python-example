@@ -11,12 +11,10 @@ import ntplib
 import paho.mqtt.client as mqtt
 from ping3 import ping
 import threading
-import time
-
-
-
 import socket
 import sys
+import time
+
 mqtt_server  = 'mqtt.vm.nurd.space'
 topic_prefix = 'GHBot/'
 channels     = ['nurdbottest', 'nurds', 'test']
@@ -62,13 +60,13 @@ def on_message(client, userdata, message):
         if command == 'ping':
             if len(tokens) == 2:
                 host = tokens[1]
-                time = ping(host, unit='ms')
+                t = ping(host, unit='ms')
 
-                if time == None:
+                if t == None:
                     client.publish(response_topic, f'Cannot ping {host} because of an unknown reason')
 
                 else:
-                    client.publish(response_topic, f'Pinging {host} took {time:.2f} milliseconds')
+                    client.publish(response_topic, f'Pinging {host} took {t:.2f} milliseconds')
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters for ping.')
@@ -81,10 +79,22 @@ def on_message(client, userdata, message):
 
                 t_string = time.ctime(response.tx_time)
 
+                tm       = time.localtime(response.tx_time)
+
+                if tm.tm_min == 0:
+                    symbols = [ chr(0x1f55b), chr(0x1f550), chr(0x1f551), chr(0x1f552), chr(0x1f553), chr(0x1f554), chr(0x1f555), chr(0x1f556), chr(0x1f557), chr(0x1f558), chr(0x1f559), chr(0x1f55a) ]
+
+                    t_string += ' ' + symbols[tm.tm_hour % 12] + ' '
+
+                elif tm.tm_min == 30:
+                    symbols = [ chr(0x1f567), chr(0x1f55c), chr(0x1f55d), chr(0x1f55e), chr(0x1f55f), chr(0x1f560), chr(0x1f561), chr(0x1f562), chr(0x1f563), chr(0x1f564), chr(0x1f565), chr(0x1f566) ]
+
+                    t_string += ' ' + symbols[tm.tm_hour % 12] + ' '
+
                 client.publish(response_topic, f'It is now +/- {t_string} and the computer this bot-plugin runs on is {response.offset:.3f} seconds off.')
 
             except Exception as e:
-                client.publish(response_topic, f'Failed determining time ({e})')
+                client.publish(response_topic, f'Failed determining time {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
     client.subscribe(f'{topic_prefix}from/irc/#')
