@@ -4,8 +4,11 @@ import json
 import os
 import paho.mqtt.client as mqtt
 import paho.mqtt.publish as publish
+import time
 
 map_ = dict()
+
+seen = dict()
 
 def on_message(client, userdata, message):
     try:
@@ -14,6 +17,17 @@ def on_message(client, userdata, message):
         print(j)
 
         if 'payload' in j and 'from' in j and 'text' in j['payload']:
+            hash_ = hash(message.payload.decode('ascii'))
+            
+            now = time.time()
+
+            if hash_ in seen:
+                if now - seen[hash_] < 30:
+                    print('ignoring message')
+                    return
+
+            seen[hash_] = now
+
             sender = f'{j["from"] & 0xffffffff:08x}'
 
             name = map_[sender] if sender in map_ else sender
