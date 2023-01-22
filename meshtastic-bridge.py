@@ -13,12 +13,12 @@ def on_message(client, userdata, message):
 
         print(j)
 
-        if 'payload' in j and 'sender' in j and 'text' in j['payload']:
-            sender = j['sender']
+        if 'payload' in j and 'from' in j and 'text' in j['payload']:
+            sender = f'{j["from"] & 0xffffffff:08x}'
 
             name = map_[sender] if sender in map_ else sender
 
-            msg = 'Meshtastic: ' + j['payload']['text'] + ' (' + name + ')'
+            msg = 'Meshtastic: ' + j['payload']['text'] + f' ({name})'
 
             topic_prefix = 'GHBot/'
             channel = 'nurds'
@@ -29,17 +29,25 @@ def on_message(client, userdata, message):
 
             publish.single(response_topic_pm, msg, hostname='mqtt.vm.nurd.space')
 
+        # {'channel': 0, 'from': -1851658976, 'id': 1236532832, 'payload': {'hardware': 3, 'id': '!91a1ed20', 'longname': 'fvh', 'shortname': 'fvh'},
+        # 'sender': '!91a1e97c', 'timestamp': 1674387014, 'to': 986987176, 'type': 'nodeinfo'}
+
         elif 'payload' in j and 'id' in j['payload'] and 'longname' in j['payload']:
-            map_[j['payload']['id']] = j['payload']['longname']
+            print(f'{j["payload"]["id"]} is {j["payload"]["longname"]}')
+
+            id_ = j['payload']['id']
+            if id_[0] == '!':
+                id_ = id_[1:]
+
+            map_[id_] = j['payload']['longname']
 
     except Exception as e:
-        print('on_message: {e}, line number: {e.__traceback__.tb_lineno}')
+        print(f'on_message: {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
     print(client, userdata, flags, rc)
 
-    if rc == 0:
-        client.subscribe('msh/2/json/NurdSpace/#')
+    client.subscribe('msh/2/json/NurdSpace/#')
 
 client = mqtt.Client('jabla%d', os.getpid())
 client.connect('10.208.30.67', port=1883, keepalive=60)
