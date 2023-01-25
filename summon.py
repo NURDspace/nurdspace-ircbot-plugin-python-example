@@ -24,7 +24,7 @@ topic_prefix = 'GHBot/'  # leave this as is
 channels     = ['nurdbottest', 'nurds', 'nurdsbofh']  # TODO: channels to respond to
 prefix       = '!'  # !command, will be updated by ghbot
 db           = 'summon.db'
-meshtastic_host = '10.208.43.239'
+#meshtastic_host = '10.208.43.239'
 
 # summoncfg.py should contain:
 #xmpp_user = '...jabber account...'
@@ -38,69 +38,69 @@ cur.execute('PRAGMA journal_mode=wal')
 cur.close()
 
 
-def send_meshtastic(text):
-    global meshtastic_host
-
-    if meshtastic_host != None:
-        try:
-            import meshtastic
-            import meshtastic.tcp_interface
-
-            iface = meshtastic.tcp_interface.TCPInterface(meshtastic_host)
-
-            iface.sendText(text)
-
-            n_nodes = len(iface.nodes.values()) if iface.nodes else 0
-
-            iface.close()
-
-            return n_nodes
-
-        except Exception as e:
-           print(f'{time.ctime()} Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
-
-    return None
-
-def send_meshtastic_info():
-    global meshtastic_host
-
-    if meshtastic_host != None:
-        try:
-            import meshtastic
-            import meshtastic.tcp_interface
-
-            iface = meshtastic.tcp_interface.TCPInterface(meshtastic_host, debugOut=sys.stdout)
-
-            rc = iface.showInfo()
-
-            iface.close()
-
-            return rc
-
-        except Exception as e:
-           print(f'Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
-
-    return None
+#def send_meshtastic(text):
+#    global meshtastic_host
+#
+#    if meshtastic_host != None:
+#        try:
+#            import meshtastic
+#            import meshtastic.tcp_interface
+#
+#            iface = meshtastic.tcp_interface.TCPInterface(meshtastic_host)
+#
+#            iface.sendText(text)
+#
+#            n_nodes = len(iface.nodes.values()) if iface.nodes else 0
+#
+#            iface.close()
+#
+#            return n_nodes
+#
+#        except Exception as e:
+#           print(f'{time.ctime()} Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
+#
+#    return None
+#
+#def send_meshtastic_info():
+#    global meshtastic_host
+#
+#    if meshtastic_host != None:
+#        try:
+#            import meshtastic
+#            import meshtastic.tcp_interface
+#
+#            iface = meshtastic.tcp_interface.TCPInterface(meshtastic_host, debugOut=sys.stdout)
+#
+#            rc = iface.showInfo()
+#
+#            iface.close()
+#
+#            return rc
+#
+#        except Exception as e:
+#           print(f'Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
+#
+#    return None
 
 def summon(nick, text, by_whom, channel):
     global con
-    global meshtastic_host
+#    global meshtastic_host
 
     ok = True
 
-    t = threading.Thread(target=send_meshtastic, args=(text,))
-    t.daemon = True
-    t.start()
+#    t = threading.Thread(target=send_meshtastic, args=(text,))
+#    t.daemon = True
+#    t.start()
 
     cur = con.cursor()
     cur.execute('SELECT email, jabber FROM entities WHERE nick=?', (nick.lower(),))
 
     row = cur.fetchone()
     if row == None:
-        if meshtastic_host != None:
-            return (False, 'Summoned via meshtastic')
-
-        else:
+#        if meshtastic_host != None:
+#            return (False, 'Summoned via meshtastic')
+#
+#        else:
             return (False, 'nothing registered for user')
 
     email  = row[0]
@@ -148,10 +148,10 @@ def summon(nick, text, by_whom, channel):
            return (False, f'Exception during "xmpp": {e}, line number: {e.__traceback__.tb_lineno}')
 
     if not email and not jabber:
-        if meshtastic_host != None:
-            return (False, 'Summoned via meshtastic')
-
-        else:
+#        if meshtastic_host != None:
+#            return (False, 'Summoned via meshtastic')
+#
+#        else:
             return (False, 'No summon protocol registered for that user')
 
     return (True, '')
@@ -160,8 +160,8 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, "cmd=summon|descr=Try to get someone's attention")
-    client.publish(target_topic, "cmd=meshtastic|descr=Try to get someone's attention via meshtastic")
-    client.publish(target_topic, "cmd=meshinfo|descr=Meshtastic state info")
+#    client.publish(target_topic, "cmd=meshtastic|descr=Try to get someone's attention via meshtastic")
+#    client.publish(target_topic, "cmd=meshinfo|descr=Meshtastic state info")
 
 def on_message(client, userdata, message):
     global prefix
@@ -212,31 +212,31 @@ def on_message(client, userdata, message):
             except Exception as e:
                 client.publish(response_topic, f'Exception during "summon": {e}, line number: {e.__traceback__.tb_lineno}')
 
-        elif command == 'meshtastic':
-            try:
-                only_nick = nick[0:nick.find('!')]
-
-                only_text = text[text.find(' '):].strip()
-
-                msg  = f'{only_nick}: {only_text}'
-
-                n_nodes = send_meshtastic(msg)
-
-                if n_nodes == None:
-                    client.publish(response_topic, 'Fail')
-
-                else:
-                    client.publish(response_topic, f'Sent to aprox. {n_nodes} nodes')
-
-            except Exception as e:
-                client.publish(response_topic, f'Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
-
-        elif command == 'meshinfo':
-            try:
-                print(send_meshtastic_info())
-
-            except Exception as e:
-                client.publish(response_topic, f'Exception during "meshinfo": {e}, line number: {e.__traceback__.tb_lineno}')
+#        elif command == 'meshtastic':
+#            try:
+#                only_nick = nick[0:nick.find('!')]
+#
+#                only_text = text[text.find(' '):].strip()
+#
+#                msg  = f'{only_nick}: {only_text}'
+#
+#                n_nodes = send_meshtastic(msg)
+#
+#                if n_nodes == None:
+#                    client.publish(response_topic, 'Fail')
+#
+#                else:
+#                    client.publish(response_topic, f'Sent to aprox. {n_nodes} nodes')
+#
+#            except Exception as e:
+#                client.publish(response_topic, f'Exception during "meshtastic": {e}, line number: {e.__traceback__.tb_lineno}')
+#
+#        elif command == 'meshinfo':
+#            try:
+#                print(send_meshtastic_info())
+#
+#            except Exception as e:
+#                client.publish(response_topic, f'Exception during "meshinfo": {e}, line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
         client.subscribe(f'{topic_prefix}from/irc/#')
