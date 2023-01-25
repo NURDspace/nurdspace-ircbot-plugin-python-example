@@ -39,6 +39,7 @@ def announce_commands(client):
     target_topic = f'{topic_prefix}to/bot/register'
 
     client.publish(target_topic, 'cmd=learn|descr=Store a fact about something, e.g.: !learn SOMETHING is DESCRIPTION. Retrieve with: "something?" Use "something? -v" to retrieve the number to delete it with !dellearn')
+    client.publish(target_topic, 'cmd=learnsearch|descr=Search for facts.')
     client.publish(target_topic, 'cmd=dellearn|descr=Forget a fact. The number required as a parameter can be retrieved with "something? -v" (the -v switch)')
 
 def on_message(client, userdata, message):
@@ -86,7 +87,7 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, f'Fact about {tokens[1]} stored under number {nr}')
 
                 except Exception as e:
-                    client.publish(response_topic, f'Exception: {e}')
+                    client.publish(response_topic, f'Exception: {e}, line number: {e.__traceback__.tb_lineno}')
 
                 cur.close()
 
@@ -107,7 +108,7 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, f'Fact {nr} deleted')
 
                 except Exception as e:
-                    client.publish(response_topic, f'Exception: {e}')
+                    client.publish(response_topic, f'Exception: {e}, line number: {e.__traceback__.tb_lineno}')
 
                 cur.close()
 
@@ -115,6 +116,44 @@ def on_message(client, userdata, message):
 
             else:
                 client.publish(response_topic, 'Invalid number of parameters: parameter should be the fact-number')
+
+        elif command == 'learnsearch':
+            if len(tokens) <= 3:
+                cur = con.cursor()
+
+                try:
+                    what = tokens[1]
+
+                    cur.execute('SELECT key, value, nr FROM learn WHERE channel=? AND (value LIKE printf("%%%s%%", ?) OR key LIKE printf("%%%s%%", ?))', (channel, what, what))
+
+                    facts = None
+
+                    verbose = True if len(tokens) == 3 and tokens[2] == '-v' else False
+
+                    for row in cur.fetchall():
+                        item = f'{row[0]}: {row[1]} ({row[2]})' if verbose else f'{row[0]}: {row[1]}'
+
+                        if facts == None:
+                            facts = item
+
+                        else:
+                            facts += ' / ' + item
+
+                    if facts != None:
+                        client.publish(response_topic, facts)
+
+                    else:
+                        client.publish(response_topic, 'Nothing found')
+
+                except Exception as e:
+                    client.publish(response_topic, f'Exception: {e}, line number: {e.__traceback__.tb_lineno}')
+
+                cur.close()
+
+                con.commit()
+
+            else:
+                client.publish(response_topic, 'Invalid number of parameters: parameter should be the keyword to search for and optionally -v')
 
         elif len(command) > 1 and command[-1] == '?':
             cur = con.cursor()
@@ -141,7 +180,7 @@ def on_message(client, userdata, message):
                     client.publish(response_topic, f'{word} is: {facts}')
 
             except Exception as e:
-                client.publish(response_topic, f'Exception: {e}')
+                client.publish(response_topic, f'Exception: {e}, line number: {e.__traceback__.tb_lineno}')
 
             cur.close()
 
