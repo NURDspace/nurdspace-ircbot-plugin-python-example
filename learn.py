@@ -124,14 +124,19 @@ def on_message(client, userdata, message):
                 try:
                     what = tokens[1]
 
-                    cur.execute('SELECT key, value, nr FROM learn WHERE channel=? AND (value LIKE printf("%%%s%%", ?) OR key LIKE printf("%%%s%%", ?))', (channel, what, what))
+                    cur.execute('SELECT key, value, nr, added_by FROM learn WHERE channel=? AND (value LIKE printf("%%%s%%", ?) OR key LIKE printf("%%%s%%", ?))', (channel, what, what))
 
                     facts = None
 
                     verbose = True if len(tokens) == 3 and tokens[2] == '-v' else False
 
                     for row in cur.fetchall():
-                        item = f'{row[0]}: {row[1]} ({row[2]})' if verbose else f'{row[0]}: {row[1]}'
+                        item = f'{row[0]}: {row[1]}'
+
+                        if verbose:
+                            added_by = row[3][0:row[3].find('!')] if row[3] else None
+
+                            item += f' ({row[2]} - {added_by})' if added_by else f' ({row[2]})'
 
                         if facts == None:
                             facts = item
