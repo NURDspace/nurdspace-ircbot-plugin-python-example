@@ -17,7 +17,7 @@ def on_message(client, userdata, message):
         print(j)
 
         if 'payload' in j and 'from' in j and 'text' in j['payload']:
-            hash_ = hash(message.payload.decode('ascii'))
+            hash_ = hash(f"{j['from']} {j['id']} {j['payload']['text']}")
             
             now = time.time()
 
