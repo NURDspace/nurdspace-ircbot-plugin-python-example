@@ -328,85 +328,89 @@ def on_message(client, userdata, message):
                 cur.close()
 
         else:
-            if len(text) == 0:
-                return
+            try:
+                if len(text) == 0:
+                    return
 
-            org_text = text
+                org_text = text
 
-            text = find_subject(text)
+                text = find_subject(text)
 
-            if text == None:
-                return
+                if text == None:
+                    return
 
-            count = 0
+                count = 0
 
-            if len(text) >= 2:
-                if text[-2:] == '++':
-                    count = 1
+                if len(text) >= 2:
+                    if text[-2:] == '++':
+                        count = 1
 
-                elif text[-2:] == '--':
-                    count = -1
+                    elif text[-2:] == '--':
+                        count = -1
 
-                text = text[0:-2]
+                    text = text[0:-2]
 
-            print('test', text, count, text[-2:0])
+                print('test', text, count, text[-2:0])
 
-            if count != 0 and text[0].isalpha():
-                print(f'Adding {count} karma to {text}')
+                if count != 0 and len(text) > 0 and text[0].isalpha():
+                    print(f'Adding {count} karma to {text}')
 
-                query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
+                    query1 = 'INSERT INTO karma(channel, word, count) VALUES(?, ?, ?) ON CONFLICT(channel, word) DO UPDATE SET count=count+?'
 
-                query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
+                    query2 = 'INSERT INTO rkarma(channel, word, who, count) VALUES(?, ?, ?, ?) ON CONFLICT(channel, word, who) DO UPDATE SET count=count+?'
 
-                query3 = "INSERT INTO karma_history(`when`, channel, word, who, count, reason) VALUES(strftime('%Y-%m-%d %H:%M:%S','now'), ?, ?, ?, ?, ?)"
+                    query3 = "INSERT INTO karma_history(`when`, channel, word, who, count, reason) VALUES(strftime('%Y-%m-%d %H:%M:%S','now'), ?, ?, ?, ?, ?)"
 
-                hash_index = org_text.find('#')
+                    hash_index = org_text.find('#')
 
-                reason = org_text[hash_index + 1:].strip() if hash_index != -1 else ''
-
-                try:
-                    cur = con.cursor()
-
-                    cur.execute('BEGIN')
-
-                    cur.execute(query1, (channel.lower(), text.lower(), count, count))
-
-                    cur.execute(query2, (channel.lower(), text.lower(), nick.lower(), count, count))
-
-                    cur.execute(query3, (channel.lower(), text.lower(), nick.lower(), count, reason))
-
-                    cur.execute('COMMIT')
-
-                    cur.execute('SELECT count FROM karma WHERE channel=? AND word=?', (channel.lower(), text.lower()))
-                    result = cur.fetchone()
-
-                    cur.close()
-
-                    print(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
-                    client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
-
-                except sqlite3.OperationalError as oe:
-                    # table does not exist probably
+                    reason = org_text[hash_index + 1:].strip() if hash_index != -1 else ''
 
                     try:
-                        query = 'CREATE TABLE karma(channel TEXT NOT NULL, word TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word))'
+                        cur = con.cursor()
 
-                        cur.execute(query)
+                        cur.execute('BEGIN')
 
-                        query = 'CREATE TABLE rkarma(channel TEXT NOT NULL, word TEXT NOT NULL, who TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word, who))'
+                        cur.execute(query1, (channel.lower(), text.lower(), count, count))
 
-                        cur.execute(query)
+                        cur.execute(query2, (channel.lower(), text.lower(), nick.lower(), count, count))
 
-                        query = 'CREATE TABLE karma_history(`when` datetime not null, channel text not null, word text not null, who text not null, count int not null, reason text not null)'
+                        cur.execute(query3, (channel.lower(), text.lower(), nick.lower(), count, reason))
 
-                        cur.execute(query)
+                        cur.execute('COMMIT')
+
+                        cur.execute('SELECT count FROM karma WHERE channel=? AND word=?', (channel.lower(), text.lower()))
+                        result = cur.fetchone()
 
                         cur.close()
 
-                        con.commit()
+                        print(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
+                        client.publish(f'{topic_prefix}to/irc/{channel}/notice', f'{text}: {result[0]}')
 
-                    except Exception as e:
-                        print(f'Unexpected exception "{e}" while handling exception "{oe}"')
+                    except sqlite3.OperationalError as oe:
+                        # table does not exist probably
+
+                        try:
+                            query = 'CREATE TABLE karma(channel TEXT NOT NULL, word TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word))'
+
+                            cur.execute(query)
+
+                            query = 'CREATE TABLE rkarma(channel TEXT NOT NULL, word TEXT NOT NULL, who TEXT NOT NULL, count INTEGER, PRIMARY KEY(channel, word, who))'
+
+                            cur.execute(query)
+
+                            query = 'CREATE TABLE karma_history(`when` datetime not null, channel text not null, word text not null, who text not null, count int not null, reason text not null)'
+
+                            cur.execute(query)
+
+                            cur.close()
+
+                            con.commit()
+
+                        except Exception as e:
+                            print(f'Unexpected exception "{e}" while handling exception "{oe}"')
+
+            except Exception as e:
+                print(f'Unexpected exception "{e}", line number: {e.__traceback__.tb_lineno}')
 
 def on_connect(client, userdata, flags, rc):
     try:
